@@ -24,7 +24,13 @@ const elements = {
   loginError: document.querySelector("#loginError"),
   loginSubmit: document.querySelector("#loginSubmit"),
   authButton: document.querySelector("#authButton"),
+  accountNameButton: document.querySelector("#accountNameButton"),
   accountLabel: document.querySelector("#accountLabel"),
+  displayNameDialog: document.querySelector("#displayNameDialog"),
+  displayNameForm: document.querySelector("#displayNameForm"),
+  displayNameInput: document.querySelector("#displayNameInput"),
+  displayNameError: document.querySelector("#displayNameError"),
+  displayNameSubmit: document.querySelector("#displayNameSubmit"),
   roleDot: document.querySelector("#roleDot"),
   studentTotal: document.querySelector("#studentTotal"),
   recordTotal: document.querySelector("#recordTotal"),
@@ -45,6 +51,7 @@ const elements = {
 
 let students = [];
 let activeRole = null;
+let signedInDisplayName = "";
 let session = loadSession();
 let toastTimer;
 let refreshPromise = null;
@@ -137,10 +144,24 @@ async function apiRequest(path, options = {}, canRefresh = true) {
 async function refreshRole() {
   if (!session) {
     activeRole = null;
+    signedInDisplayName = "";
     return;
   }
-  const role = await apiRequest("/rest/v1/rpc/get_my_role", { method: "POST", body: "{}" });
+  const role = await apiRequest("/rest/v1/rpc/get_my_role", {
+    method: "POST",
+    body: "{}"
+  });
   activeRole = Object.hasOwn(roleDetails, role) ? role : null;
+  try {
+    const displayName = await apiRequest("/rest/v1/rpc/get_my_display_name", {
+      method: "POST",
+      body: "{}"
+    });
+    signedInDisplayName = typeof displayName === "string" ? displayName.trim() : "";
+  } catch (error) {
+    console.warn("无法读取管理员自定义显示名，将使用网页默认名称：", error);
+    signedInDisplayName = "";
+  }
 }
 
 function getSortedStudents() {
@@ -232,15 +253,19 @@ function renderTable(sortedStudents) {
 }
 
 function renderAccount() {
-  const adminDisplayName = typeof config?.adminDisplayName === "string"
+  const defaultDisplayName = typeof config?.adminDisplayName === "string"
     ? config.adminDisplayName.trim()
     : "";
-  elements.accountLabel.textContent = activeRole
-    ? adminDisplayName || "管理员"
-    : session ? "已登录 · 只读" : "公开只读";
+  elements.accountLabel.textContent = session
+    ? signedInDisplayName || defaultDisplayName || "管理员"
+    : "公开只读";
+  elements.accountNameButton.textContent = signedInDisplayName || defaultDisplayName || "管理员";
+  elements.accountNameButton.hidden = !session;
+  elements.accountLabel.hidden = Boolean(session);
   elements.roleDot.classList.toggle("signed-in", Boolean(session));
   elements.authButton.textContent = session ? "退出登录" : "管理员登录";
   elements.authButton.classList.toggle("sign-out", Boolean(session));
+  const role = roleDetails[activeRole];
   elements.addButton.disabled = !role?.canAddStudents;
   elements.addButton.title = role?.canAddStudents ? "" : "请使用二级或三级管理员账号登录";
 }
@@ -375,6 +400,47 @@ document.querySelectorAll("[data-close-dialog]").forEach((button) => {
 document.querySelectorAll("[data-close-login]").forEach((button) => {
   button.addEventListener("click", () => elements.loginDialog.close());
 });
+document.querySelectorAll("[data-close-display-name]").forEach((button) => {
+  button.addEventListener("click", () => elements.displayNameDialog.close());
+});
+
+elements.accountNameButton.addEventListener("click", () => {
+  if (!session) return;
+  const defaultDisplayName = typeof config?.adminDisplayName === "string"
+    ? config.adminDisplayName.trim()
+    : "";
+  elements.displayNameInput.value = signedInDisplayName || defaultDisplayName;
+  elements.displayNameError.classList.add("hidden");
+  elements.displayNameDialog.showModal();
+  elements.displayNameInput.focus();
+});
+
+elements.displayNameForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const displayName = elements.displayNameInput.value.trim();
+  if (!displayName || displayName.length > 30) {
+    elements.displayNameError.textContent = "请输入 1 至 30 个字符的显示名称。";
+    elements.displayNameError.classList.remove("hidden");
+    return;
+  }
+  elements.displayNameSubmit.disabled = true;
+  try {
+    await apiRequest("/rest/v1/rpc/update_my_display_name", {
+      method: "POST",
+      body: JSON.stringify({ p_display_name: displayName })
+    });
+    signedInDisplayName = displayName;
+    render();
+    elements.displayNameDialog.close();
+    showToast("显示名称已更新。");
+  } catch (error) {
+    console.error("更新管理员显示名称失败：", error);
+    elements.displayNameError.textContent = error.message || "保存失败，请检查数据库是否已更新。";
+    elements.displayNameError.classList.remove("hidden");
+  } finally {
+    elements.displayNameSubmit.disabled = false;
+  }
+});
 
 elements.addForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -485,6 +551,9 @@ elements.addDialog.addEventListener("click", (event) => {
 });
 elements.loginDialog.addEventListener("click", (event) => {
   if (event.target === elements.loginDialog) elements.loginDialog.close();
+});
+elements.displayNameDialog.addEventListener("click", (event) => {
+  if (event.target === elements.displayNameDialog) elements.displayNameDialog.close();
 });
 
 document.querySelector("#today").textContent = new Intl.DateTimeFormat("zh-CN", {

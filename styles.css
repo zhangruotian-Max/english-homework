@@ -42,6 +42,9 @@ button { cursor: pointer; }
 .today { color: #939cab; font-size: 11px; }
 .role-control { display: flex; min-height: 34px; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid #e9edf3; border-radius: 8px; background: #fff; color: #8a94a5; font-size: 10px; white-space: nowrap; }
 #accountLabel { max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
+.account-name-button { max-width: 190px; overflow: hidden; padding: 4px 2px; border: 0; background: transparent; color: #637084; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.account-name-button:hover { color: #5873db; }
+.account-name-button[hidden] { display: none; }
 .auth-button { padding: 4px 7px; border: 0; border-radius: 5px; background: #edf1ff; color: #5873db; font-size: 10px; font-weight: 600; }
 .auth-button:hover { background: #e2e8ff; }
 .auth-button.sign-out { background: transparent; color: #9a7180; }
@@ -207,6 +210,7 @@ tr:nth-of-type(3n + 2) .avatar { background: #fff5eb; color: #c48a53; }
   .today { display: none; }
   .role-control { min-height: 31px; gap: 6px; padding: 0 7px; font-size: 9px; }
   #accountLabel { max-width: 100px; }
+  .account-name-button { max-width: 100px; }
   .auth-button { padding: 4px 6px; font-size: 9px; }
   .page-heading { align-items: flex-end; gap: 10px; padding: 23px 0 17px; }
   h1 { font-size: 21px; }

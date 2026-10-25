@@ -3,8 +3,14 @@ create extension if not exists pgcrypto;
 create table if not exists public.admin_roles (
   user_id uuid primary key references auth.users (id) on delete cascade,
   role text not null check (role in ('level1', 'level2', 'level3')),
+  display_name text
+    check (display_name is null or char_length(trim(display_name)) between 1 and 30),
   created_at timestamptz not null default now()
 );
+
+alter table public.admin_roles
+  add column if not exists display_name text
+  check (display_name is null or char_length(trim(display_name)) between 1 and 30);
 
 create table if not exists public.students (
   id uuid primary key default gen_random_uuid(),
@@ -68,6 +74,56 @@ security definer
 set search_path = public, pg_temp
 as $$
   select role from public.admin_roles where user_id = auth.uid()
+$$;
+
+create or replace function public.get_my_display_name()
+returns text
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select coalesce(
+    (
+      select nullif(trim(r.display_name), '')
+      from public.admin_roles r
+      where r.user_id = auth.uid()
+    ),
+    (
+      select nullif(trim(u.raw_user_meta_data ->> 'display_name'), '')
+      from auth.users u
+      where u.id = auth.uid()
+    )
+  )
+$$;
+
+create or replace function public.update_my_display_name(p_display_name text)
+returns text
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  updated_name text;
+begin
+  if p_display_name is null or char_length(trim(p_display_name)) not between 1 and 30 then
+    raise exception 'display name must contain 1 to 30 characters';
+  end if;
+
+  update auth.users
+  set raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb)
+    || jsonb_build_object('display_name', trim(p_display_name))
+  where id = auth.uid();
+  if not found then
+    raise exception 'authenticated user required';
+  end if;
+
+  update public.admin_roles
+  set display_name = trim(p_display_name)
+  where user_id = auth.uid()
+  returning display_name into updated_name;
+  return coalesce(updated_name, trim(p_display_name));
+end;
 $$;
 
 create or replace function public.add_student(p_name text)
@@ -195,12 +251,16 @@ end;
 $$;
 
 revoke all on function public.get_my_role() from public;
+revoke all on function public.get_my_display_name() from public;
+revoke all on function public.update_my_display_name(text) from public;
 revoke all on function public.add_student(text) from public;
 revoke all on function public.record_homework(uuid) from public;
 revoke all on function public.undo_homework_record(uuid) from public;
 revoke all on function public.archive_student(uuid) from public;
 
 grant execute on function public.get_my_role() to anon, authenticated;
+grant execute on function public.get_my_display_name() to anon, authenticated;
+grant execute on function public.update_my_display_name(text) to anon, authenticated;
 grant execute on function public.add_student(text) to anon, authenticated;
 grant execute on function public.record_homework(uuid) to anon, authenticated;
 grant execute on function public.undo_homework_record(uuid) to anon, authenticated;

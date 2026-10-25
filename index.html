@@ -42,6 +42,7 @@
           <span class="today" id="today"></span>
           <label class="role-control">
             <span class="role-dot" id="roleDot" aria-hidden="true"></span>
+            <button class="account-name-button" id="accountNameButton" type="button" hidden></button>
             <span id="accountLabel">公开只读</span>
             <button class="auth-button" id="authButton" type="button">管理员登录</button>
           </label>
@@ -151,6 +152,19 @@
       <input class="text-input" id="adminPassword" name="password" type="password" autocomplete="current-password" minlength="8" placeholder="请输入密码" required>
       <p class="form-error hidden" id="loginError" role="alert"></p>
       <div class="modal-actions"><button class="button button-secondary" type="button" data-close-login>取消</button><button class="button button-primary" id="loginSubmit" type="submit">登录</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="displayNameDialog" class="modal">
+    <form id="displayNameForm">
+      <div class="modal-top"><div class="modal-symbol">✎</div><button class="close-button" type="button" data-close-display-name aria-label="关闭">×</button></div>
+      <p class="eyebrow">DISPLAY NAME</p>
+      <h2>设置显示名称</h2>
+      <p class="modal-description">这个名字会显示在网站右上角，不会公开你的邮箱。</p>
+      <label class="field-label" for="displayNameInput">显示名称</label>
+      <input class="text-input" id="displayNameInput" name="displayName" maxlength="30" autocomplete="nickname" placeholder="请输入你希望显示的名字" required>
+      <p class="form-error hidden" id="displayNameError" role="alert"></p>
+      <div class="modal-actions"><button class="button button-secondary" type="button" data-close-display-name>取消</button><button class="button button-primary" id="displayNameSubmit" type="submit">保存</button></div>
     </form>
   </dialog>
 

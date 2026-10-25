@@ -18,11 +18,19 @@ publishable/anon key 本来就会公开给网页访客，安全边界是上面�
 3. 在 SQL Editor 中按下方语句分配角色，将 UUID 换成实际用户 ID。初次设置建议分配 `level3`，这个账号即可执行所有管理操作：
 
 ```sql
-insert into public.admin_roles (user_id, role) values
-  ('替换为管理员用户UUID', 'level3');
+insert into public.admin_roles (user_id, role, display_name) values
+  ('替换为管理员用户UUID', 'level3', '王老师');
 ```
 
-角色权限：`level1` 可记录和撤销；`level2` 另可添加同学；`level3` 另可移除同学。只有需要不同人员各自拥有账号时，才需要为他们分别创建账号并分配角色。只有拥有数据库管理权限的人才能分配角色。
+`display_name` 就是登录后右上角显示的名字；以后添加其他管理员时，也可以为他们填写各自的名字。任何已登录用户都可以点右上角的名字自行修改；这只更改显示名称，不会授予管理员权限。也可在 SQL Editor 更改已有管理员的名字：
+
+```sql
+update public.admin_roles
+set display_name = '王老师'
+where user_id = '替换为管理员用户UUID';
+```
+
+若数据库已运行过旧版 `schema.sql`，请在 Supabase **SQL Editor** 再次运行更新后的完整 `supabase/schema.sql`，以添加显示名字段和相关函数。角色权限：`level1` 可记录和撤销；`level2` 另可添加同学；`level3` 另可移除同学。显示名不会授予管理权限；权限仍由 `role` 单独决定。只有拥有数据库管理权限的人才能分配角色。
 
 ## 3. 发布到 GitHub Pages
 
