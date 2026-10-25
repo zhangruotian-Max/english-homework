@@ -160,9 +160,9 @@ async function refreshRole() {
     method: "POST",
     body: "{}"
   }) === true;
-  if (!activeRole) {
+  if (!canViewClass) {
     signedInDisplayName = "";
-    return canViewClass;
+    return false;
   }
   try {
     const displayName = await apiRequest("/rest/v1/rpc/get_my_display_name", {
@@ -171,7 +171,7 @@ async function refreshRole() {
     });
     signedInDisplayName = typeof displayName === "string" ? displayName.trim() : "";
   } catch (error) {
-    console.warn("无法读取管理员自定义显示名，将使用网页默认名称：", error);
+    console.warn("无法读取账号自定义显示名，将使用默认名称：", error);
     signedInDisplayName = "";
   }
   return canViewClass;
@@ -272,13 +272,16 @@ function renderAccount() {
   const defaultDisplayName = typeof config?.adminDisplayName === "string"
     ? config.adminDisplayName.trim()
     : "";
+  const accountName = signedInDisplayName || (activeRole
+    ? defaultDisplayName || "管理员"
+    : "只读查看");
+  const canEditDisplayName = Boolean(session && canViewClass);
   elements.accountLabel.textContent = session
-    ? activeRole
-      ? signedInDisplayName || defaultDisplayName || "管理员"
-      : canViewClass ? "只读查看" : "未获准查看";
-  elements.accountNameButton.textContent = signedInDisplayName || defaultDisplayName || "管理员";
-  elements.accountNameButton.hidden = !activeRole;
-  elements.accountLabel.hidden = Boolean(activeRole);
+    ? canViewClass ? accountName : "未获准查看"
+    : "登录查看";
+  elements.accountNameButton.textContent = accountName;
+  elements.accountNameButton.hidden = !canEditDisplayName;
+  elements.accountLabel.hidden = canEditDisplayName;
   elements.roleDot.classList.toggle("signed-in", Boolean(session));
   elements.authButton.textContent = session ? "退出登录" : "登录查看";
   elements.authButton.classList.toggle("sign-out", Boolean(session));
@@ -439,11 +442,12 @@ document.querySelectorAll("[data-close-display-name]").forEach((button) => {
 });
 
 elements.accountNameButton.addEventListener("click", () => {
-  if (!session) return;
-  const defaultDisplayName = typeof config?.adminDisplayName === "string"
-    ? config.adminDisplayName.trim()
-    : "";
-  elements.displayNameInput.value = signedInDisplayName || defaultDisplayName;
+  if (!session || !canViewClass) return;
+  elements.displayNameInput.value = signedInDisplayName || (
+    activeRole && typeof config?.adminDisplayName === "string"
+      ? config.adminDisplayName.trim()
+      : ""
+  );
   elements.displayNameError.classList.add("hidden");
   elements.displayNameDialog.showModal();
   elements.displayNameInput.focus();
@@ -468,7 +472,7 @@ elements.displayNameForm.addEventListener("submit", async (event) => {
     elements.displayNameDialog.close();
     showToast("显示名称已更新。");
   } catch (error) {
-    console.error("更新管理员显示名称失败：", error);
+    console.error("更新账号显示名称失败：", error);
     elements.displayNameError.textContent = error.message || "保存失败，请检查数据库是否已更新。";
     elements.displayNameError.classList.remove("hidden");
   } finally {

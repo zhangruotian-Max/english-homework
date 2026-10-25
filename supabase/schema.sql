@@ -126,6 +126,10 @@ as $$
 declare
   updated_name text;
 begin
+  if not public.can_view_class() then
+    raise exception 'approved class viewer required';
+  end if;
+
   if p_display_name is null or char_length(trim(p_display_name)) not between 1 and 30 then
     raise exception 'display name must contain 1 to 30 characters';
   end if;
