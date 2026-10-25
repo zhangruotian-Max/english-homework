@@ -1,0 +1,44 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Validate Supabase configuration
+        run: |
+          if grep -Eq 'YOUR_PROJECT_REF|YOUR_SUPABASE' config.js; then
+            echo "Fill in config.js with your Supabase project URL and publishable/anon key."
+            exit 1
+          fi
+      - name: Prepare static site
+        run: |
+          mkdir _site
+          cp index.html styles.css app.js config.js _site/
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy site
+        id: deployment
+        uses: actions/deploy-pages@v4

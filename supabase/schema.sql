@@ -1,0 +1,207 @@
+create extension if not exists pgcrypto;
+
+create table if not exists public.admin_roles (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  role text not null check (role in ('level1', 'level2', 'level3')),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.students (
+  id uuid primary key default gen_random_uuid(),
+  name text not null check (char_length(trim(name)) between 1 and 20),
+  created_at timestamptz not null default now(),
+  archived_at timestamptz
+);
+
+create unique index if not exists students_active_name_unique
+  on public.students (lower(name))
+  where archived_at is null;
+
+create table if not exists public.homework_records (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid not null references public.students (id),
+  action text not null check (action in ('record', 'undo')),
+  target_record_id uuid references public.homework_records (id),
+  actor_id uuid not null references auth.users (id),
+  created_at timestamptz not null default now(),
+  constraint homework_record_action_target check (
+    (action = 'record' and target_record_id is null)
+    or (action = 'undo' and target_record_id is not null)
+  )
+);
+
+create unique index if not exists homework_records_undo_once
+  on public.homework_records (target_record_id)
+  where action = 'undo';
+
+alter table public.admin_roles enable row level security;
+alter table public.students enable row level security;
+alter table public.homework_records enable row level security;
+
+drop policy if exists "Anyone can view active students" on public.students;
+create policy "Anyone can view active students"
+  on public.students for select to anon, authenticated
+  using (archived_at is null);
+
+drop policy if exists "Anyone can view homework records" on public.homework_records;
+create policy "Anyone can view homework records"
+  on public.homework_records for select to anon, authenticated
+  using (
+    exists (
+      select 1 from public.students s
+      where s.id = homework_records.student_id
+    )
+  );
+
+revoke all on public.admin_roles from anon, authenticated;
+revoke all on public.students from anon, authenticated;
+revoke all on public.homework_records from anon, authenticated;
+grant select (id, name, created_at) on public.students to anon, authenticated;
+grant select (id, student_id, action, target_record_id, created_at)
+  on public.homework_records to anon, authenticated;
+
+create or replace function public.get_my_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select role from public.admin_roles where user_id = auth.uid()
+$$;
+
+create or replace function public.add_student(p_name text)
+returns public.students
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  new_student public.students;
+begin
+  if coalesce(public.get_my_role(), '') not in ('level2', 'level3') then
+    raise exception 'permission denied';
+  end if;
+  if p_name is null or char_length(trim(p_name)) not between 1 and 20 then
+    raise exception 'student name must contain 1 to 20 characters';
+  end if;
+
+  insert into public.students (name) values (trim(p_name))
+  returning * into new_student;
+  return new_student;
+end;
+$$;
+
+create or replace function public.record_homework(p_student_id uuid)
+returns public.homework_records
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  current_student public.students;
+  current_count integer;
+  new_record public.homework_records;
+begin
+  if coalesce(public.get_my_role(), '') not in ('level1', 'level2', 'level3') then
+    raise exception 'permission denied';
+  end if;
+
+  select * into current_student
+  from public.students
+  where id = p_student_id and archived_at is null
+  for update;
+  if not found then
+    raise exception 'student not found';
+  end if;
+
+  select count(*)::integer into current_count
+  from public.homework_records r
+  where r.student_id = p_student_id
+    and r.action = 'record'
+    and not exists (
+      select 1 from public.homework_records u
+      where u.action = 'undo' and u.target_record_id = r.id
+    );
+  if current_count >= 6 then
+    raise exception 'student has reached the six-record limit';
+  end if;
+
+  insert into public.homework_records (student_id, action, actor_id)
+  values (p_student_id, 'record', auth.uid())
+  returning * into new_record;
+  return new_record;
+end;
+$$;
+
+create or replace function public.undo_homework_record(p_student_id uuid)
+returns public.homework_records
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  new_record public.homework_records;
+  latest_record_id uuid;
+begin
+  if coalesce(public.get_my_role(), '') not in ('level1', 'level2', 'level3') then
+    raise exception 'permission denied';
+  end if;
+
+  perform 1 from public.students
+  where id = p_student_id and archived_at is null
+  for update;
+  if not found then
+    raise exception 'student not found';
+  end if;
+
+  select r.id into latest_record_id
+  from public.homework_records r
+  where r.student_id = p_student_id
+    and r.action = 'record'
+    and not exists (
+      select 1 from public.homework_records u
+      where u.action = 'undo' and u.target_record_id = r.id
+    )
+  order by r.created_at desc, r.id desc
+  limit 1;
+  if latest_record_id is null then
+    raise exception 'no active record to undo';
+  end if;
+
+  insert into public.homework_records (student_id, action, target_record_id, actor_id)
+  values (p_student_id, 'undo', latest_record_id, auth.uid())
+  returning * into new_record;
+  return new_record;
+end;
+$$;
+
+create or replace function public.archive_student(p_student_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if coalesce(public.get_my_role(), '') <> 'level3' then
+    raise exception 'permission denied';
+  end if;
+  update public.students set archived_at = now()
+  where id = p_student_id and archived_at is null;
+  if not found then
+    raise exception 'student not found';
+  end if;
+end;
+$$;
+
+revoke all on function public.get_my_role() from public;
+revoke all on function public.add_student(text) from public;
+revoke all on function public.record_homework(uuid) from public;
+revoke all on function public.undo_homework_record(uuid) from public;
+revoke all on function public.archive_student(uuid) from public;
+
+grant execute on function public.get_my_role() to anon, authenticated;
+grant execute on function public.add_student(text) to anon, authenticated;
+grant execute on function public.record_homework(uuid) to anon, authenticated;
+grant execute on function public.undo_homework_record(uuid) to anon, authenticated;
+grant execute on function public.archive_student(uuid) to anon, authenticated;
