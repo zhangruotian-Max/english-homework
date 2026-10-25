@@ -233,9 +233,8 @@ function renderTable(sortedStudents) {
 
 function renderAccount() {
   const role = roleDetails[activeRole];
-  const userEmail = session?.user?.email;
   elements.accountLabel.textContent = role
-    ? `${role.label}${userEmail ? ` · ${userEmail}` : ""}`
+    ? role.label
     : session ? "已登录 · 只读" : "公开只读";
   elements.roleDot.classList.toggle("signed-in", Boolean(session));
   elements.authButton.textContent = session ? "退出登录" : "管理员登录";
