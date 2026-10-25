@@ -207,13 +207,15 @@ function renderRanking(sortedStudents) {
     return;
   }
 
-  elements.rankingList.innerHTML = sortedStudents.slice(0, 6).map((student, index) => {
+  elements.rankingList.innerHTML = sortedStudents.slice(0, 3).map((student, index) => {
+    const rank = sortedStudents.findIndex((rankedStudent) => rankedStudent.count === student.count) + 1;
     const width = student.count === 0 ? 0 : Math.max(8, Math.round((student.count / 6) * 100));
-    return `<div class="rank-row">
-      <span class="rank-number">${index + 1}</span>
+    return `<div class="podium-place podium-slot-${index + 1} podium-rank-${rank}">
+      <span class="podium-medal" aria-label="第 ${rank} 名">${rank}</span>
       <span class="student-name" title="${escapeHTML(student.name)}">${escapeHTML(student.name)}</span>
-      <span class="rank-track" aria-label="满分 6 次"><span class="rank-fill" style="width:${width}%"></span></span>
-      <span class="rank-count"><strong>${student.count}</strong> 次</span>
+      <span class="podium-count"><strong>${student.count}</strong> 次</span>
+      <span class="podium-track" aria-label="满分 6 次"><span class="rank-fill" style="width:${width}%"></span></span>
+      <div class="podium-stand" aria-hidden="true"><span>${rank}</span></div>
     </div>`;
   }).join("");
 }
@@ -239,7 +241,7 @@ function renderTable(sortedStudents) {
   };
 
   elements.studentTable.innerHTML = visibleStudents.map((student) => {
-    const rank = sortedStudents.indexOf(student) + 1;
+    const rank = sortedStudents.findIndex((rankedStudent) => rankedStudent.count === student.count) + 1;
     const level = getLevel(student.count);
     const recordDisabled = !permissions.canRecord || student.count >= 6;
     const undoDisabled = !permissions.canRecord || student.count === 0;

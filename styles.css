@@ -86,22 +86,24 @@ h2 { margin-bottom: 5px; font-size: 16px; font-weight: 700; letter-spacing: -.2p
 .panel-subtitle { margin-bottom: 0; color: #9aa3b1; font-size: 10px; }
 .heading-badge { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border: 1px solid #eaf4ed; border-radius: 20px; background: #f5fbf6; color: #79a88b; font-size: 9px; white-space: nowrap; }
 .live-dot { width: 6px; height: 6px; background: #68bd89; box-shadow: 0 0 0 3px #68bd891a; }
-.ranking-list { display: grid; gap: 7px; margin-top: 17px; }
-.rank-row { display: grid; min-height: 37px; grid-template-columns: 28px minmax(75px, .8fr) minmax(90px, 1.7fr) 48px; align-items: center; gap: 9px; padding: 4px 10px; border: 1px solid #f0f2f6; border-radius: 8px; background: #fff; }
-.rank-row:nth-child(1) { margin-right: 0; background: linear-gradient(90deg, #fffaf1, #fff); border-color: #f7eddb; }
-.rank-row:nth-child(2) { margin-right: 17px; }
-.rank-row:nth-child(3) { margin-right: 34px; }
-.rank-row:nth-child(4) { margin-right: 51px; }
-.rank-row:nth-child(5) { margin-right: 68px; }
-.rank-number { display: grid; width: 22px; height: 22px; place-items: center; border-radius: 7px; background: #f2f4f8; color: #8c96a6; font-size: 10px; font-weight: 700; }
-.rank-row:nth-child(1) .rank-number { background: #fff0d2; color: #d49437; }
-.rank-row:nth-child(2) .rank-number { background: #edf0f4; color: #788596; }
-.rank-row:nth-child(3) .rank-number { background: #f9eee6; color: #ba805c; }
-.student-name { overflow: hidden; font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.rank-track { height: 5px; overflow: hidden; border-radius: 8px; background: #f0f2f6; }
-.rank-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #8399f3, #5977e9); }
-.rank-count { color: #727f91; font-size: 10px; text-align: right; white-space: nowrap; }
-.rank-count strong { color: #38465b; font-size: 12px; }
+.ranking-list { display: grid; min-height: 235px; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 10px; margin-top: 17px; padding: 0 5px; }
+.podium-place { display: flex; min-width: 0; flex-direction: column; align-items: center; justify-content: flex-end; }
+.podium-slot-1 { grid-column: 2; grid-row: 1; }
+.podium-slot-2 { grid-column: 1; grid-row: 1; }
+.podium-slot-3 { grid-column: 3; grid-row: 1; }
+.podium-medal { display: grid; width: 26px; height: 26px; flex: 0 0 auto; place-items: center; margin-bottom: 7px; border: 1px solid #e7eaf0; border-radius: 50%; background: #f4f6f9; color: #788596; font-size: 11px; font-weight: 700; }
+.podium-rank-1 .podium-medal { border-color: #f1d9a9; background: #fff2d7; color: #c38a32; }
+.podium-rank-2 .podium-medal { border-color: #e1e5eb; background: #f0f2f5; color: #788596; }
+.podium-rank-3 .podium-medal { border-color: #efd9ca; background: #fbefe7; color: #ba805c; }
+.student-name { width: 100%; overflow: hidden; font-size: 11px; font-weight: 600; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.podium-count { margin: 4px 0 7px; color: #727f91; font-size: 10px; white-space: nowrap; }
+.podium-count strong { color: #38465b; font-size: 12px; }
+.podium-track { width: 72%; height: 5px; overflow: hidden; border-radius: 8px; background: #f0f2f6; }
+.rank-fill { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #8399f3, #5977e9); }
+.podium-stand { display: grid; width: 100%; height: 64px; place-items: center; margin-top: 9px; border: 1px solid #e8ebf1; border-bottom: 0; border-radius: 8px 8px 0 0; background: linear-gradient(180deg, #f8f9fc, #eef1f7); color: #9ba4b2; font-size: 15px; font-weight: 700; }
+.podium-rank-1 .podium-stand { height: 99px; border-color: #f2e2c4; background: linear-gradient(180deg, #fffaf0, #f9edda); color: #d09a45; }
+.podium-rank-2 .podium-stand { height: 77px; }
+.podium-rank-3 .podium-stand { height: 56px; }
 .rank-empty { display: grid; min-height: 175px; align-content: center; justify-items: center; color: #a1aaba; font-size: 11px; text-align: center; }
 .rank-empty span { margin-bottom: 9px; color: #c8d0e7; font-size: 24px; }
 .chart-label { display: flex; align-items: center; gap: 6px; color: #a0a8b5; font-size: 9px; }
@@ -225,8 +227,12 @@ tr:nth-of-type(3n + 2) .avatar { background: #fff5eb; color: #c48a53; }
   .content-grid { gap: 10px; margin-top: 11px; }
   .ranking-panel, .levels-panel, .students-panel { padding: 16px 13px 13px; }
   .students-panel { margin-top: 11px; }
-  .rank-row { grid-template-columns: 25px minmax(60px, .8fr) minmax(48px, 1fr) 43px; gap: 7px; padding-right: 7px; padding-left: 7px; }
-  .rank-row:nth-child(n) { margin-right: 0; }
+  .ranking-list { min-height: 220px; gap: 7px; padding: 0; }
+  .podium-medal { width: 23px; height: 23px; }
+  .podium-track { width: 85%; }
+  .podium-rank-1 .podium-stand { height: 88px; }
+  .podium-rank-2 .podium-stand { height: 68px; }
+  .podium-rank-3 .podium-stand { height: 50px; }
   .student-heading { align-items: flex-start; flex-direction: column; }
   .search-box { width: 100%; }
   .table-wrap { overflow-x: auto; }
