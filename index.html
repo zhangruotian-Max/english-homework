@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
+  <script>document.documentElement.classList.add("auth-checking");</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f5f7fb">
@@ -142,17 +143,28 @@
 
   <dialog id="loginDialog" class="modal">
     <form id="loginForm">
-      <div class="modal-top"><div class="modal-symbol">↗</div><button class="close-button" type="button" data-close-login aria-label="关闭">×</button></div>
-      <p class="eyebrow">ADMIN SIGN IN</p>
-      <h2>管理员登录</h2>
-      <p class="modal-description">请使用 Supabase 中已创建的管理员账号登录。</p>
-      <label class="field-label" for="adminEmail">管理员邮箱</label>
+      <div class="modal-top"><div class="modal-symbol">↗</div></div>
+      <p class="eyebrow">ACCOUNT SIGN IN</p>
+      <h2>账号登录</h2>
+      <p class="modal-description">请使用老师提供的 Supabase 管理员或只读查看账号登录。</p>
+      <label class="field-label" for="adminEmail">邮箱</label>
       <input class="text-input" id="adminEmail" name="email" type="email" autocomplete="username" maxlength="254" placeholder="name@example.com" required>
       <label class="field-label password-label" for="adminPassword">密码</label>
       <input class="text-input" id="adminPassword" name="password" type="password" autocomplete="current-password" minlength="8" placeholder="请输入密码" required>
       <p class="form-error hidden" id="loginError" role="alert"></p>
-      <div class="modal-actions"><button class="button button-secondary" type="button" data-close-login>取消</button><button class="button button-primary" id="loginSubmit" type="submit">登录</button></div>
+      <div class="modal-actions"><button class="button button-primary" id="loginSubmit" type="submit">登录</button></div>
     </form>
+  </dialog>
+
+  <dialog id="logoutDialog" class="modal">
+    <div class="modal-top"><div class="modal-symbol">↗</div></div>
+    <p class="eyebrow">SIGN OUT</p>
+    <h2>确认退出登录？</h2>
+    <p class="modal-description">退出后需要重新登录才能查看班级名单和统计。</p>
+    <div class="modal-actions">
+      <button class="button button-secondary" id="cancelLogout" type="button">继续使用</button>
+      <button class="button button-primary" id="confirmLogout" type="button">确认退出</button>
+    </div>
   </dialog>
 
   <dialog id="displayNameDialog" class="modal">

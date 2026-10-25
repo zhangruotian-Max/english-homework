@@ -23,6 +23,9 @@ const elements = {
   loginPassword: document.querySelector("#adminPassword"),
   loginError: document.querySelector("#loginError"),
   loginSubmit: document.querySelector("#loginSubmit"),
+  logoutDialog: document.querySelector("#logoutDialog"),
+  cancelLogout: document.querySelector("#cancelLogout"),
+  confirmLogout: document.querySelector("#confirmLogout"),
   authButton: document.querySelector("#authButton"),
   accountNameButton: document.querySelector("#accountNameButton"),
   accountLabel: document.querySelector("#accountLabel"),
@@ -86,6 +89,15 @@ function saveSession(nextSession) {
   }
 }
 
+function setAuthenticationRequired(required) {
+  document.documentElement.classList.toggle("auth-checking", required);
+  if (required) {
+    if (!elements.loginDialog.open) elements.loginDialog.showModal();
+  } else if (elements.loginDialog.open) {
+    elements.loginDialog.close();
+  }
+}
+
 function showToast(message, isError = false) {
   window.clearTimeout(toastTimer);
   elements.toast.textContent = message;
@@ -118,6 +130,9 @@ async function refreshSession() {
     canViewClass = false;
     students = [];
     render();
+    elements.loginError.textContent = "登录已过期，请重新登录。";
+    elements.loginError.classList.remove("hidden");
+    setAuthenticationRequired(true);
     throw new Error(getErrorMessage(result, "登录已过期，请重新登录。"));
   }
   if (!saveSession(result)) throw new Error("无法保存续期后的登录信息。");
@@ -310,23 +325,29 @@ async function loadCloudData({ quiet = false, force = false } = {}) {
   }
 
   const currentRefresh = (async () => {
+    let accessVerified = false;
     try {
       if (!session) {
         activeRole = null;
         canViewClass = false;
         signedInDisplayName = "";
         students = [];
+        setAuthenticationRequired(true);
         render();
         setConnectionStatus("请登录后查看名单");
         return false;
       }
       if (!await refreshRole()) {
         students = [];
+        setAuthenticationRequired(true);
+        elements.loginError.textContent = "此账号尚未获准查看名单，请联系老师。";
+        elements.loginError.classList.remove("hidden");
         render();
         setConnectionStatus("账号尚未获准查看", true);
-        if (!quiet) showToast("此账号没有查看名单的权限，请联系老师。", true);
         return false;
       }
+      accessVerified = true;
+      setAuthenticationRequired(false);
       const [studentRows, recordRows] = await Promise.all([
         apiGetAll("/rest/v1/students?select=id,name,created_at&order=name.asc"),
         apiGetAll("/rest/v1/homework_records?select=id,student_id,action,target_record_id,created_at")
@@ -352,11 +373,17 @@ async function loadCloudData({ quiet = false, force = false } = {}) {
       return true;
     } catch (error) {
       console.error("无法同步 Supabase 数据：", error);
-      activeRole = null;
-      canViewClass = false;
       students = [];
       render();
       setConnectionStatus("云端连接失败", true);
+      if (!accessVerified) {
+        activeRole = null;
+        canViewClass = false;
+        setAuthenticationRequired(true);
+        elements.loginError.textContent = error.message || "无法验证账号权限，请检查网络后重试。";
+        elements.loginError.classList.remove("hidden");
+        render();
+      }
       if (!quiet) showToast(error.message || "无法连接 Supabase，请检查配置和网络。", true);
       return false;
     }
@@ -435,9 +462,6 @@ elements.addButton.addEventListener("click", openAddDialog);
 elements.emptyAddButton.addEventListener("click", openAddDialog);
 document.querySelectorAll("[data-close-dialog]").forEach((button) => {
   button.addEventListener("click", () => elements.addDialog.close());
-});
-document.querySelectorAll("[data-close-login]").forEach((button) => {
-  button.addEventListener("click", () => elements.loginDialog.close());
 });
 document.querySelectorAll("[data-close-display-name]").forEach((button) => {
   button.addEventListener("click", () => elements.displayNameDialog.close());
@@ -525,16 +549,23 @@ elements.authButton.addEventListener("click", async () => {
   if (!session) {
     elements.loginError.classList.add("hidden");
     elements.loginForm.reset();
-    elements.loginDialog.showModal();
+    setAuthenticationRequired(true);
     elements.loginEmail.focus();
     return;
   }
+  elements.logoutDialog.showModal();
+});
+
+async function signOut() {
+  elements.logoutDialog.close();
   const currentSession = session;
-  saveSession(null);
+  if (!saveSession(null)) return;
   activeRole = null;
   canViewClass = false;
   signedInDisplayName = "";
   students = [];
+  elements.loginError.classList.add("hidden");
+  setAuthenticationRequired(true);
   render();
   try {
     const response = await fetch(`${supabaseUrl}/auth/v1/logout`, {
@@ -542,12 +573,16 @@ elements.authButton.addEventListener("click", async () => {
       headers: { apikey: supabaseKey, Authorization: `Bearer ${currentSession.access_token}` }
     });
     if (!response.ok) throw new Error(`注销请求失败（${response.status}）。`);
-    showToast("已退出管理员账号。");
+    elements.loginError.classList.add("hidden");
   } catch (error) {
     console.error("Supabase 退出请求失败：", error);
-    showToast("已在本设备退出；服务器注销请求未完成。", true);
+    elements.loginError.textContent = "已在此设备退出，但服务器注销请求未完成。";
+    elements.loginError.classList.remove("hidden");
   }
-});
+}
+
+elements.cancelLogout.addEventListener("click", () => elements.logoutDialog.close());
+elements.confirmLogout.addEventListener("click", signOut);
 
 elements.loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -570,16 +605,17 @@ elements.loginForm.addEventListener("submit", async (event) => {
     const result = await response.json().catch(() => null);
     if (!response.ok) throw new Error(getErrorMessage(result, "登录失败，请检查邮箱和密码。"));
     if (!saveSession(result)) throw new Error("无法保存登录状态，请检查浏览器设置。");
-    elements.loginDialog.close();
     const synced = await loadCloudData({ force: true });
-    if (!synced) {
-      showToast(canViewClass
-        ? "登录成功，但云端数据同步失败，请检查连接状态。"
-        : "此账号尚未获准查看名单，请联系老师。", true);
+    if (!synced && !canViewClass) {
+      elements.loginError.textContent = "此账号尚未获准查看名单，请联系老师。";
+      elements.loginError.classList.remove("hidden");
     } else {
-      showToast(activeRole
-        ? `已登录：${roleDetails[activeRole].label}。`
-        : "已登录只读查看账号。");
+      elements.loginError.classList.add("hidden");
+      if (synced) {
+        showToast(activeRole
+          ? `已登录：${roleDetails[activeRole].label}。`
+          : "已登录只读查看账号。");
+      }
     }
   } catch (error) {
     console.error("管理员登录失败：", error);
@@ -595,7 +631,10 @@ elements.addDialog.addEventListener("click", (event) => {
   if (event.target === elements.addDialog) elements.addDialog.close();
 });
 elements.loginDialog.addEventListener("click", (event) => {
-  if (event.target === elements.loginDialog) elements.loginDialog.close();
+  if (event.target === elements.loginDialog) event.preventDefault();
+});
+elements.loginDialog.addEventListener("cancel", (event) => {
+  event.preventDefault();
 });
 elements.displayNameDialog.addEventListener("click", (event) => {
   if (event.target === elements.displayNameDialog) elements.displayNameDialog.close();
@@ -605,6 +644,7 @@ document.querySelector("#today").textContent = new Intl.DateTimeFormat("zh-CN", 
   year: "numeric", month: "long", day: "numeric", weekday: "long"
 }).format(new Date());
 
+setAuthenticationRequired(true);
 render();
 if (isConfigured) {
   loadCloudData();
@@ -614,5 +654,6 @@ if (isConfigured) {
   });
 } else {
   setConnectionStatus("请配置 Supabase", true);
-  showToast("网页已就绪，请先按 README 配置 Supabase 后才能共享数据。", true);
+  elements.loginError.textContent = "请先按 README 配置 Supabase，之后才能登录查看。";
+  elements.loginError.classList.remove("hidden");
 }
