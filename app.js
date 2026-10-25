@@ -52,6 +52,7 @@ const elements = {
 let students = [];
 let activeRole = null;
 let signedInDisplayName = "";
+let canViewClass = false;
 let session = loadSession();
 let toastTimer;
 let refreshPromise = null;
@@ -114,6 +115,8 @@ async function refreshSession() {
   if (!response.ok) {
     saveSession(null);
     activeRole = null;
+    canViewClass = false;
+    students = [];
     render();
     throw new Error(getErrorMessage(result, "登录已过期，请重新登录。"));
   }
@@ -145,13 +148,22 @@ async function refreshRole() {
   if (!session) {
     activeRole = null;
     signedInDisplayName = "";
-    return;
+    canViewClass = false;
+    return false;
   }
   const role = await apiRequest("/rest/v1/rpc/get_my_role", {
     method: "POST",
     body: "{}"
   });
   activeRole = Object.hasOwn(roleDetails, role) ? role : null;
+  canViewClass = await apiRequest("/rest/v1/rpc/can_view_class", {
+    method: "POST",
+    body: "{}"
+  }) === true;
+  if (!activeRole) {
+    signedInDisplayName = "";
+    return canViewClass;
+  }
   try {
     const displayName = await apiRequest("/rest/v1/rpc/get_my_display_name", {
       method: "POST",
@@ -162,6 +174,7 @@ async function refreshRole() {
     console.warn("无法读取管理员自定义显示名，将使用网页默认名称：", error);
     signedInDisplayName = "";
   }
+  return canViewClass;
 }
 
 function getSortedStudents() {
@@ -245,8 +258,11 @@ function renderTable(sortedStudents) {
 
   const noStudents = students.length === 0;
   elements.emptyState.classList.toggle("hidden", !noStudents);
-  elements.emptyTitle.textContent = "还没有添加同学";
-  elements.emptyDescription.textContent = "添加班级同学后，就可以开始记录英语作业情况啦。";
+  const canSeeRoster = canViewClass && Boolean(session);
+  elements.emptyTitle.textContent = canSeeRoster ? "还没有添加同学" : "请登录后查看班级名单";
+  elements.emptyDescription.textContent = canSeeRoster
+    ? "添加班级同学后，就可以开始记录英语作业情况啦。"
+    : "名单仅对获准的查看账号开放，请使用老师提供的账号登录。";
   elements.emptyAddButton.classList.toggle("hidden", !permissions.canAddStudents);
   elements.noResults.classList.toggle("hidden", noStudents || visibleStudents.length > 0);
   elements.studentTable.classList.toggle("hidden", noStudents || visibleStudents.length === 0);
@@ -257,13 +273,14 @@ function renderAccount() {
     ? config.adminDisplayName.trim()
     : "";
   elements.accountLabel.textContent = session
-    ? signedInDisplayName || defaultDisplayName || "管理员"
-    : "公开只读";
+    ? activeRole
+      ? signedInDisplayName || defaultDisplayName || "管理员"
+      : canViewClass ? "只读查看" : "未获准查看";
   elements.accountNameButton.textContent = signedInDisplayName || defaultDisplayName || "管理员";
-  elements.accountNameButton.hidden = !session;
-  elements.accountLabel.hidden = Boolean(session);
+  elements.accountNameButton.hidden = !activeRole;
+  elements.accountLabel.hidden = Boolean(activeRole);
   elements.roleDot.classList.toggle("signed-in", Boolean(session));
-  elements.authButton.textContent = session ? "退出登录" : "管理员登录";
+  elements.authButton.textContent = session ? "退出登录" : "登录查看";
   elements.authButton.classList.toggle("sign-out", Boolean(session));
   const role = roleDetails[activeRole];
   elements.addButton.disabled = !role?.canAddStudents;
@@ -289,6 +306,22 @@ async function loadCloudData({ quiet = false, force = false } = {}) {
 
   const currentRefresh = (async () => {
     try {
+      if (!session) {
+        activeRole = null;
+        canViewClass = false;
+        signedInDisplayName = "";
+        students = [];
+        render();
+        setConnectionStatus("请登录后查看名单");
+        return false;
+      }
+      if (!await refreshRole()) {
+        students = [];
+        render();
+        setConnectionStatus("账号尚未获准查看", true);
+        if (!quiet) showToast("此账号没有查看名单的权限，请联系老师。", true);
+        return false;
+      }
       const [studentRows, recordRows] = await Promise.all([
         apiGetAll("/rest/v1/students?select=id,name,created_at&order=name.asc"),
         apiGetAll("/rest/v1/homework_records?select=id,student_id,action,target_record_id,created_at")
@@ -307,7 +340,6 @@ async function loadCloudData({ quiet = false, force = false } = {}) {
         name: student.name,
         count: countsByStudent.get(student.id) || 0
       }));
-      await refreshRole();
       render();
       setConnectionStatus(`云端已同步 · ${new Intl.DateTimeFormat("zh-CN", {
         hour: "2-digit", minute: "2-digit"
@@ -316,6 +348,8 @@ async function loadCloudData({ quiet = false, force = false } = {}) {
     } catch (error) {
       console.error("无法同步 Supabase 数据：", error);
       activeRole = null;
+      canViewClass = false;
+      students = [];
       render();
       setConnectionStatus("云端连接失败", true);
       if (!quiet) showToast(error.message || "无法连接 Supabase，请检查配置和网络。", true);
@@ -492,6 +526,9 @@ elements.authButton.addEventListener("click", async () => {
   const currentSession = session;
   saveSession(null);
   activeRole = null;
+  canViewClass = false;
+  signedInDisplayName = "";
+  students = [];
   render();
   try {
     const response = await fetch(`${supabaseUrl}/auth/v1/logout`, {
@@ -530,11 +567,13 @@ elements.loginForm.addEventListener("submit", async (event) => {
     elements.loginDialog.close();
     const synced = await loadCloudData({ force: true });
     if (!synced) {
-      showToast("登录成功，但云端数据同步失败，请检查连接状态。", true);
+      showToast(canViewClass
+        ? "登录成功，但云端数据同步失败，请检查连接状态。"
+        : "此账号尚未获准查看名单，请联系老师。", true);
     } else {
       showToast(activeRole
         ? `已登录：${roleDetails[activeRole].label}。`
-        : "账号登录成功，但尚未分配管理员角色，目前只有只读权限。");
+        : "已登录只读查看账号。");
     }
   } catch (error) {
     console.error("管理员登录失败：", error);

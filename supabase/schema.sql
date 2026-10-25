@@ -8,6 +8,10 @@ create table if not exists public.admin_roles (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.class_viewers (
+  user_id uuid primary key references auth.users (id) on delete cascade
+);
+
 alter table public.admin_roles
   add column if not exists display_name text
   check (display_name is null or char_length(trim(display_name)) between 1 and 30);
@@ -40,31 +44,47 @@ create unique index if not exists homework_records_undo_once
   on public.homework_records (target_record_id)
   where action = 'undo';
 
+create or replace function public.can_view_class()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select auth.uid() is not null
+    and (
+      exists (select 1 from public.admin_roles where user_id = auth.uid())
+      or exists (select 1 from public.class_viewers where user_id = auth.uid())
+    )
+$$;
+
 alter table public.admin_roles enable row level security;
 alter table public.students enable row level security;
 alter table public.homework_records enable row level security;
 
 drop policy if exists "Anyone can view active students" on public.students;
-create policy "Anyone can view active students"
-  on public.students for select to anon, authenticated
-  using (archived_at is null);
+drop policy if exists "Approved users can view active students" on public.students;
+create policy "Approved users can view active students"
+  on public.students for select to authenticated
+  using (archived_at is null and public.can_view_class());
 
 drop policy if exists "Anyone can view homework records" on public.homework_records;
-create policy "Anyone can view homework records"
-  on public.homework_records for select to anon, authenticated
+drop policy if exists "Approved users can view homework records" on public.homework_records;
+create policy "Approved users can view homework records"
+  on public.homework_records for select to authenticated
   using (
-    exists (
-      select 1 from public.students s
-      where s.id = homework_records.student_id
-    )
+    public.can_view_class()
+    and exists (select 1 from public.students s where s.id = homework_records.student_id)
   );
 
+alter table public.class_viewers enable row level security;
 revoke all on public.admin_roles from anon, authenticated;
+revoke all on public.class_viewers from anon, authenticated;
 revoke all on public.students from anon, authenticated;
 revoke all on public.homework_records from anon, authenticated;
-grant select (id, name, created_at) on public.students to anon, authenticated;
+grant select (id, name, created_at) on public.students to authenticated;
 grant select (id, student_id, action, target_record_id, created_at)
-  on public.homework_records to anon, authenticated;
+  on public.homework_records to authenticated;
 
 create or replace function public.get_my_role()
 returns text
@@ -251,6 +271,7 @@ end;
 $$;
 
 revoke all on function public.get_my_role() from public;
+revoke all on function public.can_view_class() from public;
 revoke all on function public.get_my_display_name() from public;
 revoke all on function public.update_my_display_name(text) from public;
 revoke all on function public.add_student(text) from public;
@@ -258,10 +279,11 @@ revoke all on function public.record_homework(uuid) from public;
 revoke all on function public.undo_homework_record(uuid) from public;
 revoke all on function public.archive_student(uuid) from public;
 
-grant execute on function public.get_my_role() to anon, authenticated;
-grant execute on function public.get_my_display_name() to anon, authenticated;
-grant execute on function public.update_my_display_name(text) to anon, authenticated;
-grant execute on function public.add_student(text) to anon, authenticated;
-grant execute on function public.record_homework(uuid) to anon, authenticated;
-grant execute on function public.undo_homework_record(uuid) to anon, authenticated;
-grant execute on function public.archive_student(uuid) to anon, authenticated;
+grant execute on function public.get_my_role() to authenticated;
+grant execute on function public.can_view_class() to authenticated;
+grant execute on function public.get_my_display_name() to authenticated;
+grant execute on function public.update_my_display_name(text) to authenticated;
+grant execute on function public.add_student(text) to authenticated;
+grant execute on function public.record_homework(uuid) to authenticated;
+grant execute on function public.undo_homework_record(uuid) to authenticated;
+grant execute on function public.archive_student(uuid) to authenticated;
