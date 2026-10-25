@@ -146,11 +146,11 @@
       <div class="modal-top"><div class="modal-symbol">↗</div></div>
       <p class="eyebrow">ACCOUNT SIGN IN</p>
       <h2>账号登录</h2>
-      <p class="modal-description">请使用老师提供的 Supabase 管理员或只读查看账号登录。</p>
-      <label class="field-label" for="adminEmail">邮箱</label>
-      <input class="text-input" id="adminEmail" name="email" type="email" autocomplete="username" maxlength="254" placeholder="name@example.com" required>
+      <p class="modal-description">请使用老师提供的用户名和密码登录。</p>
+      <label class="field-label" for="loginUsername">用户名</label>
+      <input class="text-input" id="loginUsername" name="username" type="text" autocomplete="username" minlength="3" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._\x2d]{2,29}" placeholder="3 至 30 位字母、数字或 . _ -" required>
       <label class="field-label password-label" for="adminPassword">密码</label>
-      <input class="text-input" id="adminPassword" name="password" type="password" autocomplete="current-password" minlength="6" placeholder="至少 6 位" required>
+      <input class="text-input" id="adminPassword" name="password" type="password" autocomplete="current-password" minlength="6" maxlength="128" placeholder="至少 6 位" required>
       <p class="form-error hidden" id="loginError" role="alert"></p>
       <div class="modal-actions"><button class="button button-primary" id="loginSubmit" type="submit">登录</button></div>
     </form>

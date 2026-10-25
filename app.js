@@ -19,7 +19,7 @@ const elements = {
   formError: document.querySelector("#formError"),
   loginDialog: document.querySelector("#loginDialog"),
   loginForm: document.querySelector("#loginForm"),
-  loginEmail: document.querySelector("#adminEmail"),
+  loginUsername: document.querySelector("#loginUsername"),
   loginPassword: document.querySelector("#adminPassword"),
   loginError: document.querySelector("#loginError"),
   loginSubmit: document.querySelector("#loginSubmit"),
@@ -550,7 +550,7 @@ elements.authButton.addEventListener("click", async () => {
     elements.loginError.classList.add("hidden");
     elements.loginForm.reset();
     setAuthenticationRequired(true);
-    elements.loginEmail.focus();
+    elements.loginUsername.focus();
     return;
   }
   elements.logoutDialog.showModal();
@@ -594,16 +594,16 @@ elements.loginForm.addEventListener("submit", async (event) => {
   elements.loginSubmit.disabled = true;
   elements.loginError.classList.add("hidden");
   try {
-    const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+    const response = await fetch(`${supabaseUrl}/functions/v1/username-login`, {
       method: "POST",
       headers: { apikey: supabaseKey, "Content-Type": "application/json" },
       body: JSON.stringify({
-        email: elements.loginEmail.value.trim(),
+        username: elements.loginUsername.value.trim(),
         password: elements.loginPassword.value
       })
     });
     const result = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(getErrorMessage(result, "登录失败，请检查邮箱和密码。"));
+    if (!response.ok) throw new Error(getErrorMessage(result, "登录失败，请检查用户名和密码。"));
     if (!saveSession(result)) throw new Error("无法保存登录状态，请检查浏览器设置。");
     const synced = await loadCloudData({ force: true });
     if (!synced && !canViewClass) {
@@ -618,7 +618,7 @@ elements.loginForm.addEventListener("submit", async (event) => {
       }
     }
   } catch (error) {
-    console.error("管理员登录失败：", error);
+    console.error("账号登录失败：", error);
     elements.loginError.textContent = error.message || "登录失败，请检查网络和账号设置。";
     elements.loginError.classList.remove("hidden");
   } finally {

@@ -12,6 +12,12 @@ create table if not exists public.class_viewers (
   user_id uuid primary key references auth.users (id) on delete cascade
 );
 
+create table if not exists public.login_usernames (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  username text not null unique
+    check (username = lower(username) and username ~ '^[a-z0-9][a-z0-9._-]{2,29}$')
+);
+
 alter table public.admin_roles
   add column if not exists display_name text
   check (display_name is null or char_length(trim(display_name)) between 1 and 30);
@@ -59,6 +65,7 @@ as $$
 $$;
 
 alter table public.admin_roles enable row level security;
+alter table public.login_usernames enable row level security;
 alter table public.students enable row level security;
 alter table public.homework_records enable row level security;
 
@@ -79,6 +86,7 @@ create policy "Approved users can view homework records"
 
 alter table public.class_viewers enable row level security;
 revoke all on public.admin_roles from anon, authenticated;
+revoke all on public.login_usernames from anon, authenticated;
 revoke all on public.class_viewers from anon, authenticated;
 revoke all on public.students from anon, authenticated;
 revoke all on public.homework_records from anon, authenticated;
