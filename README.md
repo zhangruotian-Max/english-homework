@@ -44,9 +44,9 @@ where user_id = '替换为管理员用户UUID';
 1. 在 Supabase **SQL Editor** 运行最新版完整的 [`supabase/schema.sql`](./supabase/schema.sql)，创建私有用户名映射表。已运行过旧版本的项目也需要重跑。
 2. 打开 Supabase **Edge Functions**，创建名为 `username-login` 的函数，将 [`supabase/functions/username-login/index.ts`](./supabase/functions/username-login/index.ts) 的内容粘贴并部署。
 3. 在该函数的设置中关闭 **Verify JWT**，因为登录用户尚未有 JWT。函数只允许本网站来源，并且只返回登录令牌。
-4. 在 Edge Function secrets 中设置 `SUPABASE_SERVICE_ROLE_KEY` 和 `SUPABASE_ANON_KEY`。可从 Supabase 项目的 **Project Settings → API Keys** 获取。`SUPABASE_URL` 通常由 Supabase 自动提供；如函数环境没有此变量，也需设置为 Project URL。
+4. Supabase 会自动向 Edge Function 提供 `SUPABASE_URL`、`SUPABASE_PUBLISHABLE_KEYS` 和 `SUPABASE_SECRET_KEYS`。新版密钥变量通常以 JSON 对象形式提供，函数会读取其中的 `default` key。旧的 `SUPABASE_ANON_KEY` 和 `SUPABASE_SERVICE_ROLE_KEY` 若显示 **Deprecated（弃用）**，不用手动添加或复制；函数优先使用新版变量，并兼容旧变量。
 
-**绝不要**将 `service_role` key 放入 `config.js`、网页代码或 GitHub 仓库；它只能保存在 Supabase Edge Function 的服务器端 secrets。每个 Auth 用户都要在 `login_usernames` 表中有一条用户名映射，否则无法用用户名登录。
+**绝不要**将 secret / `service_role` key 放入 `config.js`、网页代码或 GitHub 仓库，也不要把以 `SUPABASE_` 开头的内置变量添加为自定义 Secret；它们由 Supabase 管理。每个 Auth 用户都要在 `login_usernames` 表中有一条用户名映射，否则无法用用户名登录。
 
 ## 4. 创建只读查看账号
 

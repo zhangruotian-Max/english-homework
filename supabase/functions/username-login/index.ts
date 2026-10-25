@@ -17,6 +17,26 @@ function jsonResponse(body: Record<string, unknown>, status: number, origin: str
   });
 }
 
+function getDefaultKey(keysVariable: string, legacyVariable: string) {
+  const serializedKeys = Deno.env.get(keysVariable);
+  if (serializedKeys) {
+    try {
+      const keys: unknown = JSON.parse(serializedKeys);
+      if (
+        keys !== null &&
+        typeof keys === "object" &&
+        "default" in keys &&
+        typeof keys.default === "string"
+      ) {
+        return keys.default;
+      }
+    } catch (error) {
+      console.error(`Unable to parse ${keysVariable}:`, error);
+    }
+  }
+  return Deno.env.get(legacyVariable);
+}
+
 Deno.serve(async (request: Request) => {
   const origin = request.headers.get("origin");
   if (origin && origin !== allowedOrigin) {
@@ -30,9 +50,9 @@ Deno.serve(async (request: Request) => {
   }
 
   const projectUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-  if (!projectUrl || !serviceRoleKey || !anonKey) {
+  const serviceRoleKey = getDefaultKey("SUPABASE_SECRET_KEYS", "SUPABASE_SERVICE_ROLE_KEY");
+  const publishableKey = getDefaultKey("SUPABASE_PUBLISHABLE_KEYS", "SUPABASE_ANON_KEY");
+  if (!projectUrl || !serviceRoleKey || !publishableKey) {
     console.error("Username login function is missing Supabase environment variables.");
     return jsonResponse({ error: "Login service is not configured." }, 500, origin);
   }
@@ -103,7 +123,7 @@ Deno.serve(async (request: Request) => {
     const signInResponse = await fetch(`${projectUrl}/auth/v1/token?grant_type=password`, {
       method: "POST",
       headers: {
-        apikey: anonKey,
+        apikey: publishableKey,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({ email, password })
