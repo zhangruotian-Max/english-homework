@@ -86,10 +86,11 @@ create policy "Approved users can view homework records"
 
 alter table public.class_viewers enable row level security;
 revoke all on public.admin_roles from anon, authenticated;
-revoke all on public.login_usernames from anon, authenticated;
+revoke all on public.login_usernames from public, anon, authenticated;
 revoke all on public.class_viewers from anon, authenticated;
 revoke all on public.students from anon, authenticated;
 revoke all on public.homework_records from anon, authenticated;
+grant select on public.login_usernames to service_role;
 grant select (id, name, created_at) on public.students to authenticated;
 grant select (id, student_id, action, target_record_id, created_at)
   on public.homework_records to authenticated;
