@@ -232,9 +232,11 @@ function renderTable(sortedStudents) {
 }
 
 function renderAccount() {
-  const role = roleDetails[activeRole];
-  elements.accountLabel.textContent = role
-    ? role.label
+  const adminDisplayName = typeof config?.adminDisplayName === "string"
+    ? config.adminDisplayName.trim()
+    : "";
+  elements.accountLabel.textContent = activeRole
+    ? adminDisplayName || "管理员"
     : session ? "已登录 · 只读" : "公开只读";
   elements.roleDot.classList.toggle("signed-in", Boolean(session));
   elements.authButton.textContent = session ? "退出登录" : "管理员登录";

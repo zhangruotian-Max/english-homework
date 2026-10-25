@@ -7,7 +7,7 @@
 1. 在 Supabase 创建一个项目，并打开 **SQL Editor → New query**。
 2. 将 [`supabase/schema.sql`](./supabase/schema.sql) 的全部内容粘贴并运行。
 3. 在项目的 **Connect** 对话框或 **Project Settings → API Keys** 中复制 Project URL 和 **publishable key**（`sb_publishable_...`；旧项目也可使用 `anon` key）。
-4. 编辑根目录的 `config.js`，填入这两项。浏览器端只使用 publishable/anon key；**绝不要**使用 `service_role` 或 secret key。
+4. 编辑根目录的 `config.js`，填入这两项。可同时设置 `adminDisplayName`，自定义登录后右上角显示的名称，例如 `"王老师"`。浏览器端只使用 publishable/anon key；**绝不要**使用 `service_role` 或 secret key。
 
 publishable/anon key 本来就会公开给网页访客，安全边界是上面的数据库 RLS 策略和权限函数，不是隐藏这个 key。
 
