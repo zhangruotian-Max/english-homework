@@ -385,9 +385,6 @@ function renderAccount() {
 function updatePageState(index, updateHistory = false) {
   const maxPage = roleDetails[activeRole] && session && canViewClass ? 2 : 1;
   const pageIndex = Math.max(0, Math.min(maxPage, index));
-  if (pageIndex !== index) {
-    elements.pageTrack.scrollTo({ left: pageIndex * elements.pageTrack.clientWidth });
-  }
   const changed = pageIndex !== currentPage;
   currentPage = pageIndex;
   elements.pageTabs.forEach((tab) => {
@@ -404,8 +401,8 @@ function updatePageState(index, updateHistory = false) {
   });
   const activePage = elements.pageTrack.querySelector(`[data-page-index="${currentPage}"]`);
   if (activePage) {
-    elements.pageTrack.style.height = "auto";
-    elements.pageTrack.style.height = `${activePage.getBoundingClientRect().height}px`;
+    elements.pageTrack.style.height = `${activePage.offsetHeight}px`;
+    elements.pageTrack.style.transform = `translateX(-${currentPage * 100}%)`;
   }
   if (changed && updateHistory) {
     const hash = ["#overview", "#records-page", "#management"][currentPage];
@@ -416,10 +413,6 @@ function updatePageState(index, updateHistory = false) {
 function navigateToPage(index, updateHistory = true) {
   const maxPage = roleDetails[activeRole] && session && canViewClass ? 2 : 1;
   const pageIndex = Math.max(0, Math.min(maxPage, index));
-  elements.pageTrack.scrollTo({
-    left: pageIndex * elements.pageTrack.clientWidth,
-    behavior: "smooth"
-  });
   updatePageState(pageIndex, updateHistory);
 }
 
@@ -897,14 +890,26 @@ elements.pageArrows.forEach((button) => {
     navigateToPage(currentPage + Number(button.dataset.pageStep));
   });
 });
-elements.pageTrack.addEventListener("scroll", () => {
-  window.requestAnimationFrame(() => {
-    const pageIndex = Math.round(elements.pageTrack.scrollLeft / elements.pageTrack.clientWidth);
-    if (pageIndex !== currentPage) updatePageState(pageIndex, true);
-  });
+let swipeStart = null;
+elements.pageTrack.addEventListener("pointerdown", (event) => {
+  if (event.pointerType === "mouse" && event.button !== 0) return;
+  if (event.target.closest("button, input, textarea, select, label, a, .table-wrap")) return;
+  swipeStart = { x: event.clientX, y: event.clientY };
+});
+elements.pageTrack.addEventListener("pointerup", (event) => {
+  if (!swipeStart) return;
+  const deltaX = event.clientX - swipeStart.x;
+  const deltaY = event.clientY - swipeStart.y;
+  const swipeThreshold = Math.max(100, elements.pageTrack.clientWidth * 0.18);
+  if (Math.abs(deltaX) >= swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+    navigateToPage(currentPage + (deltaX < 0 ? 1 : -1));
+  }
+  swipeStart = null;
+});
+elements.pageTrack.addEventListener("pointercancel", () => {
+  swipeStart = null;
 });
 window.addEventListener("resize", () => {
-  elements.pageTrack.scrollLeft = currentPage * elements.pageTrack.clientWidth;
   updatePageState(currentPage);
 });
 window.addEventListener("popstate", () => {
