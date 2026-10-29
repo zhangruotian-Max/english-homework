@@ -400,12 +400,7 @@ function updatePageState(index, updateHistory = false) {
       ? currentPage === 0
       : currentPage === maxPage;
   });
-  const pages = elements.pageTrack.querySelectorAll(".app-page");
   const activePage = elements.pageTrack.querySelector(`.app-page[data-page-index="${currentPage}"]`);
-  pages.forEach((page) => {
-    const offset = Number(page.dataset.pageIndex) - currentPage;
-    page.style.transform = `translateX(${offset * 100}%)`;
-  });
   if (activePage) {
     elements.pageTrack.style.height = `${activePage.offsetHeight}px`;
   }
@@ -418,6 +413,10 @@ function updatePageState(index, updateHistory = false) {
 function navigateToPage(index, updateHistory = true) {
   const maxPage = roleDetails[activeRole] && session && canViewClass ? 2 : 1;
   const pageIndex = Math.max(0, Math.min(maxPage, index));
+  const activePage = elements.pageTrack.querySelector(`.app-page[data-page-index="${pageIndex}"]`);
+  if (activePage) {
+    elements.pageTrack.scrollTo({ left: activePage.offsetLeft, behavior: "smooth" });
+  }
   updatePageState(pageIndex, updateHistory);
 }
 
@@ -428,7 +427,11 @@ function render() {
   renderChart();
   renderTable(sortedStudents);
   renderAccount();
-  window.requestAnimationFrame(() => updatePageState(currentPage));
+  window.requestAnimationFrame(() => {
+    updatePageState(currentPage);
+    const activePage = elements.pageTrack.querySelector(`.app-page[data-page-index="${currentPage}"]`);
+    if (activePage) elements.pageTrack.scrollLeft = activePage.offsetLeft;
+  });
 }
 
 async function loadCloudData({ quiet = false, force = false } = {}) {
@@ -905,7 +908,7 @@ function finishSwipe(pointerId, x, y) {
   if (!swipeStart || pointerId !== swipeStart.pointerId) return;
   const deltaX = x - swipeStart.x;
   const deltaY = y - swipeStart.y;
-  const swipeThreshold = Math.max(48, elements.pageTrack.clientWidth * 0.08);
+  const swipeThreshold = Math.max(80, elements.pageTrack.clientWidth * 0.1);
   if (Math.abs(deltaX) >= swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
     navigateToPage(currentPage + (deltaX < 0 ? 1 : -1));
   }
@@ -941,6 +944,16 @@ window.addEventListener("touchend", (event) => {
 window.addEventListener("touchcancel", () => {
   swipeStart = null;
 }, { passive: true });
+let pageScrollFrame = 0;
+elements.pageTrack.addEventListener("scroll", () => {
+  if (pageScrollFrame) return;
+  pageScrollFrame = window.requestAnimationFrame(() => {
+    pageScrollFrame = 0;
+    if (!elements.pageTrack.clientWidth) return;
+    const pageIndex = Math.round(elements.pageTrack.scrollLeft / elements.pageTrack.clientWidth);
+    if (pageIndex !== currentPage) updatePageState(pageIndex, true);
+  });
+}, { passive: true });
 let horizontalWheelDelta = 0;
 let wheelGestureNavigated = false;
 let wheelGestureTimer = 0;
@@ -957,7 +970,7 @@ elements.mainContent.addEventListener("wheel", (event) => {
   event.preventDefault();
   if (!wheelGestureNavigated) {
     horizontalWheelDelta += deltaX;
-    const wheelThreshold = Math.max(48, elements.pageTrack.clientWidth * 0.08);
+    const wheelThreshold = Math.max(80, elements.pageTrack.clientWidth * 0.1);
     if (Math.abs(horizontalWheelDelta) >= wheelThreshold) {
       navigateToPage(currentPage + (horizontalWheelDelta > 0 ? 1 : -1));
       horizontalWheelDelta = 0;
@@ -968,12 +981,14 @@ elements.mainContent.addEventListener("wheel", (event) => {
   wheelGestureTimer = window.setTimeout(() => {
     horizontalWheelDelta = 0;
     wheelGestureNavigated = false;
-  }, 180);
+  }, 450);
 }, { passive: false });
 window.addEventListener("blur", () => {
   swipeStart = null;
 });
 window.addEventListener("resize", () => {
+  const activePage = elements.pageTrack.querySelector(`.app-page[data-page-index="${currentPage}"]`);
+  if (activePage) elements.pageTrack.scrollLeft = activePage.offsetLeft;
   updatePageState(currentPage);
 });
 window.addEventListener("popstate", () => {
