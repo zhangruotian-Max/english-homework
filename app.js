@@ -402,7 +402,8 @@ function updatePageState(index, updateHistory = false) {
   const activePage = elements.pageTrack.querySelector(`[data-page-index="${currentPage}"]`);
   if (activePage) {
     elements.pageTrack.style.height = `${activePage.offsetHeight}px`;
-    elements.pageTrack.style.transform = `translateX(-${currentPage * 100}%)`;
+    const pageOffset = activePage.getBoundingClientRect().left - elements.pageTrack.getBoundingClientRect().left;
+    elements.pageTrack.style.transform = `translateX(-${pageOffset}px)`;
   }
   if (changed && updateHistory) {
     const hash = ["#overview", "#records-page", "#management"][currentPage];
