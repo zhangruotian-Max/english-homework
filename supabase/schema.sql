@@ -296,6 +296,137 @@ begin
 end;
 $$;
 
+create or replace function public.rename_student(p_student_id uuid, p_name text)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if coalesce(public.get_my_role(), '') <> 'level3' then
+    raise exception 'permission denied';
+  end if;
+  if p_name is null or char_length(trim(p_name)) not between 1 and 20 then
+    raise exception 'student name must contain 1 to 20 characters';
+  end if;
+  update public.students
+  set name = trim(p_name)
+  where id = p_student_id and archived_at is null;
+  if not found then
+    raise exception 'student not found';
+  end if;
+end;
+$$;
+
+create or replace function public.batch_add_students(p_names text[])
+returns integer
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  student_name text;
+  added_count integer := 0;
+begin
+  if coalesce(public.get_my_role(), '') not in ('level2', 'level3') then
+    raise exception 'permission denied';
+  end if;
+  if p_names is null or coalesce(array_length(p_names, 1), 0) not between 1 and 100 then
+    raise exception 'batch must contain 1 to 100 student names';
+  end if;
+
+  foreach student_name in array p_names loop
+    if student_name is null or char_length(trim(student_name)) not between 1 and 20 then
+      raise exception 'student name must contain 1 to 20 characters';
+    end if;
+    insert into public.students (name) values (trim(student_name));
+    added_count := added_count + 1;
+  end loop;
+  return added_count;
+end;
+$$;
+
+create or replace function public.batch_record_homework(p_student_ids uuid[])
+returns integer
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  student_id uuid;
+  changed_count integer := 0;
+begin
+  if p_student_ids is null or coalesce(array_length(p_student_ids, 1), 0) not between 1 and 100
+    or array_position(p_student_ids, null) is not null
+    or cardinality(p_student_ids) <> (
+      select count(distinct student_id) from unnest(p_student_ids) as ids(student_id)
+    )
+  then
+    raise exception 'select 1 to 100 unique students';
+  end if;
+  foreach student_id in array p_student_ids loop
+    perform public.record_homework(student_id);
+    changed_count := changed_count + 1;
+  end loop;
+  return changed_count;
+end;
+$$;
+
+create or replace function public.batch_undo_homework_record(p_student_ids uuid[])
+returns integer
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  student_id uuid;
+  changed_count integer := 0;
+begin
+  if p_student_ids is null or coalesce(array_length(p_student_ids, 1), 0) not between 1 and 100
+    or array_position(p_student_ids, null) is not null
+    or cardinality(p_student_ids) <> (
+      select count(distinct student_id) from unnest(p_student_ids) as ids(student_id)
+    )
+  then
+    raise exception 'select 1 to 100 unique students';
+  end if;
+  foreach student_id in array p_student_ids loop
+    perform public.undo_homework_record(student_id);
+    changed_count := changed_count + 1;
+  end loop;
+  return changed_count;
+end;
+$$;
+
+create or replace function public.batch_archive_students(p_student_ids uuid[])
+returns integer
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  student_id uuid;
+  changed_count integer := 0;
+begin
+  if coalesce(public.get_my_role(), '') <> 'level3' then
+    raise exception 'permission denied';
+  end if;
+  if p_student_ids is null or coalesce(array_length(p_student_ids, 1), 0) not between 1 and 100
+    or array_position(p_student_ids, null) is not null
+    or cardinality(p_student_ids) <> (
+      select count(distinct student_id) from unnest(p_student_ids) as ids(student_id)
+    )
+  then
+    raise exception 'select 1 to 100 unique students';
+  end if;
+  foreach student_id in array p_student_ids loop
+    perform public.archive_student(student_id);
+    changed_count := changed_count + 1;
+  end loop;
+  return changed_count;
+end;
+$$;
+
 revoke all on function public.get_my_role() from public;
 revoke all on function public.can_view_class() from public;
 revoke all on function public.get_my_display_name() from public;
@@ -304,6 +435,11 @@ revoke all on function public.add_student(text) from public;
 revoke all on function public.record_homework(uuid) from public;
 revoke all on function public.undo_homework_record(uuid) from public;
 revoke all on function public.archive_student(uuid) from public;
+revoke all on function public.rename_student(uuid, text) from public;
+revoke all on function public.batch_add_students(text[]) from public;
+revoke all on function public.batch_record_homework(uuid[]) from public;
+revoke all on function public.batch_undo_homework_record(uuid[]) from public;
+revoke all on function public.batch_archive_students(uuid[]) from public;
 
 grant execute on function public.get_my_role() to authenticated;
 grant execute on function public.can_view_class() to authenticated;
@@ -313,3 +449,8 @@ grant execute on function public.add_student(text) to authenticated;
 grant execute on function public.record_homework(uuid) to authenticated;
 grant execute on function public.undo_homework_record(uuid) to authenticated;
 grant execute on function public.archive_student(uuid) to authenticated;
+grant execute on function public.rename_student(uuid, text) to authenticated;
+grant execute on function public.batch_add_students(text[]) to authenticated;
+grant execute on function public.batch_record_homework(uuid[]) to authenticated;
+grant execute on function public.batch_undo_homework_record(uuid[]) to authenticated;
+grant execute on function public.batch_archive_students(uuid[]) to authenticated;

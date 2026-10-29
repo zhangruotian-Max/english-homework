@@ -1,9 +1,9 @@
 const SESSION_KEY = "homework-trace-supabase-session-v1";
 const levels = [1, 2, 3, 4, 5, 6];
 const roleDetails = {
-  level1: { label: "一级管理员", canRecord: true, canAddStudents: false, canRemoveStudents: false },
-  level2: { label: "二级管理员", canRecord: true, canAddStudents: true, canRemoveStudents: false },
-  level3: { label: "三级管理员", canRecord: true, canAddStudents: true, canRemoveStudents: true }
+  level1: { label: "一级管理员", canRecord: true, canAddStudents: false, canRemoveStudents: false, canEditStudents: false },
+  level2: { label: "二级管理员", canRecord: true, canAddStudents: true, canRemoveStudents: false, canEditStudents: false },
+  level3: { label: "三级管理员", canRecord: true, canAddStudents: true, canRemoveStudents: true, canEditStudents: true }
 };
 const config = window.APP_CONFIG;
 const supabaseUrl = typeof config?.supabaseUrl === "string" ? config.supabaseUrl.replace(/\/+$/, "") : "";
@@ -27,6 +27,20 @@ const elements = {
   pageTitle: document.querySelector("#pageTitle"),
   pageTabs: [...document.querySelectorAll(".page-tab")],
   pageArrows: [...document.querySelectorAll(".page-arrow")],
+  managementPage: document.querySelector("#managementPage"),
+  batchAddForm: document.querySelector("#batchAddForm"),
+  batchStudentNames: document.querySelector("#batchStudentNames"),
+  selectionCount: document.querySelector("#selectionCount"),
+  managementSearchInput: document.querySelector("#managementSearchInput"),
+  selectAllStudents: document.querySelector("#selectAllStudents"),
+  managementStudentTable: document.querySelector("#managementStudentTable"),
+  managementEmptyState: document.querySelector("#managementEmptyState"),
+  editStudentDialog: document.querySelector("#editStudentDialog"),
+  editStudentForm: document.querySelector("#editStudentForm"),
+  editStudentId: document.querySelector("#editStudentId"),
+  editStudentName: document.querySelector("#editStudentName"),
+  editStudentError: document.querySelector("#editStudentError"),
+  editStudentSubmit: document.querySelector("#editStudentSubmit"),
   logoutDialog: document.querySelector("#logoutDialog"),
   cancelLogout: document.querySelector("#cancelLogout"),
   confirmLogout: document.querySelector("#confirmLogout"),
@@ -49,7 +63,6 @@ const elements = {
   emptyState: document.querySelector("#emptyState"),
   emptyTitle: document.querySelector("#emptyTitle"),
   emptyDescription: document.querySelector("#emptyDescription"),
-  emptyAddButton: document.querySelector("#emptyAddButton"),
   noResults: document.querySelector("#noResults"),
   searchInput: document.querySelector("#searchInput"),
   connectionStatus: document.querySelector("#connectionStatus"),
@@ -60,7 +73,9 @@ let students = [];
 let activeRole = null;
 let signedInDisplayName = "";
 let canViewClass = false;
-let currentPage = window.location.hash === "#records-page" ? 1 : 0;
+let currentPage = window.location.hash === "#management" ? 2 :
+  window.location.hash === "#records-page" ? 1 : 0;
+const selectedStudentIds = new Set();
 let session = loadSession();
 let toastTimer;
 let refreshPromise = null;
@@ -257,6 +272,11 @@ function renderChart() {
 }
 
 function renderTable(sortedStudents) {
+  const isAdministrator = Boolean(roleDetails[activeRole] && session && canViewClass);
+  const activeStudentIds = new Set(students.map((student) => student.id));
+  selectedStudentIds.forEach((id) => {
+    if (!activeStudentIds.has(id)) selectedStudentIds.delete(id);
+  });
   const query = elements.searchInput.value.trim().toLocaleLowerCase();
   const visibleStudents = sortedStudents.filter((student) => student.name.toLocaleLowerCase().includes(query));
   const permissions = roleDetails[activeRole] || {
@@ -266,18 +286,12 @@ function renderTable(sortedStudents) {
   elements.studentTable.innerHTML = visibleStudents.map((student) => {
     const rank = sortedStudents.findIndex((rankedStudent) => rankedStudent.count === student.count) + 1;
     const level = getLevel(student.count);
-    const recordDisabled = !permissions.canRecord || student.count >= 6;
-    const undoDisabled = !permissions.canRecord || student.count === 0;
-    const removeButton = permissions.canRemoveStudents
-      ? `<button class="action-button undo" type="button" data-action="remove" data-id="${escapeHTML(student.id)}" aria-label="移除${escapeHTML(student.name)}">移除</button>`
-      : "";
     return `<tr>
       <td><span class="table-rank${rank === 1 ? " top-rank" : ""}">${rank}</span></td>
       <td><span class="name-cell"><span class="avatar">${escapeHTML(student.name.slice(0, 1))}</span>${escapeHTML(student.name)}</span></td>
       <td><span class="count-pill${student.count > 0 ? " has-records" : ""}">${student.count} 次</span></td>
       <td><span class="level-pill${level > 0 ? " has-level" : ""}"><span class="level-dot"></span>${level > 0 ? `等级 ${level}` : "未记录"}</span></td>
       <td><div class="progress-track" role="img" aria-label="等级进度 ${student.count} / 6"><div class="progress-fill" style="width:${(student.count / 6) * 100}%"></div></div></td>
-      <td><span class="row-actions"><button class="action-button" type="button" data-action="record" data-id="${escapeHTML(student.id)}" ${recordDisabled ? "disabled" : ""}>＋ 记录</button><button class="action-button undo" type="button" data-action="undo" data-id="${escapeHTML(student.id)}" ${undoDisabled ? "disabled" : ""}>撤销</button>${removeButton}</span></td>
     </tr>`;
   }).join("");
 
@@ -288,9 +302,51 @@ function renderTable(sortedStudents) {
   elements.emptyDescription.textContent = canSeeRoster
     ? "添加班级同学后，就可以开始记录英语作业情况啦。"
     : "名单仅对获准的查看账号开放，请使用老师提供的账号登录。";
-  elements.emptyAddButton.classList.toggle("hidden", !permissions.canAddStudents);
   elements.noResults.classList.toggle("hidden", noStudents || visibleStudents.length > 0);
   elements.studentTable.classList.toggle("hidden", noStudents || visibleStudents.length === 0);
+
+  if (!isAdministrator) {
+    elements.managementStudentTable.innerHTML = "";
+    elements.managementEmptyState.classList.add("hidden");
+    elements.selectionCount.textContent = "已选 0 人";
+    elements.selectAllStudents.checked = false;
+    elements.selectAllStudents.indeterminate = false;
+    return;
+  }
+
+  const managementQuery = elements.managementSearchInput.value.trim().toLocaleLowerCase();
+  const managementStudents = sortedStudents.filter((student) =>
+    student.name.toLocaleLowerCase().includes(managementQuery)
+  );
+  elements.managementStudentTable.innerHTML = managementStudents.map((student) => {
+    const level = getLevel(student.count);
+    const checked = selectedStudentIds.has(student.id) ? "checked" : "";
+    const actions = [
+      `<button class="action-button" type="button" data-action="record" data-id="${escapeHTML(student.id)}" ${!permissions.canRecord || student.count >= 6 ? "disabled" : ""}>＋ 记录</button>`,
+      `<button class="action-button undo" type="button" data-action="undo" data-id="${escapeHTML(student.id)}" ${!permissions.canRecord || student.count === 0 ? "disabled" : ""}>撤销</button>`
+    ];
+    if (permissions.canEditStudents) {
+      actions.push(`<button class="action-button" type="button" data-action="edit" data-id="${escapeHTML(student.id)}">改名</button>`);
+    }
+    if (permissions.canRemoveStudents) {
+      actions.push(`<button class="action-button undo" type="button" data-action="remove" data-id="${escapeHTML(student.id)}">移除</button>`);
+    }
+    return `<tr>
+      <td><input type="checkbox" data-select-student="${escapeHTML(student.id)}" aria-label="选择${escapeHTML(student.name)}" ${checked}></td>
+      <td><span class="name-cell"><span class="avatar">${escapeHTML(student.name.slice(0, 1))}</span>${escapeHTML(student.name)}</span></td>
+      <td><span class="count-pill${student.count > 0 ? " has-records" : ""}">${student.count} 次</span></td>
+      <td><span class="level-pill${level > 0 ? " has-level" : ""}"><span class="level-dot"></span>${level > 0 ? `等级 ${level}` : "未记录"}</span></td>
+      <td><div class="progress-track" role="img" aria-label="等级进度 ${student.count} / 6"><div class="progress-fill" style="width:${(student.count / 6) * 100}%"></div></div></td>
+      <td><span class="row-actions">${actions.join("")}</span></td>
+    </tr>`;
+  }).join("");
+  elements.managementEmptyState.classList.toggle("hidden", managementStudents.length > 0);
+  const selectedVisible = managementStudents.filter((student) => selectedStudentIds.has(student.id)).length;
+  elements.selectionCount.textContent = `已选 ${selectedStudentIds.size} 人`;
+  elements.selectAllStudents.checked = managementStudents.length > 0 &&
+    selectedVisible === managementStudents.length;
+  elements.selectAllStudents.indeterminate = selectedVisible > 0 &&
+    selectedVisible < managementStudents.length;
 }
 
 function renderAccount() {
@@ -311,35 +367,52 @@ function renderAccount() {
   elements.authButton.textContent = session ? "退出登录" : "登录查看";
   elements.authButton.classList.toggle("sign-out", Boolean(session));
   const role = roleDetails[activeRole];
+  const isAdministrator = Boolean(role && session && canViewClass);
+  document.querySelectorAll(".admin-only").forEach((element) => {
+    element.classList.toggle("hidden", !isAdministrator);
+    if (element === elements.managementPage) element.hidden = !isAdministrator;
+  });
+  document.querySelectorAll(".admin-level2-only").forEach((element) => {
+    element.classList.toggle("hidden", !role?.canAddStudents);
+  });
+  document.querySelectorAll(".admin-level3-only").forEach((element) => {
+    element.classList.toggle("hidden", !role?.canRemoveStudents);
+  });
   elements.addButton.disabled = !role?.canAddStudents;
   elements.addButton.title = role?.canAddStudents ? "" : "请使用二级或三级管理员账号登录";
 }
 
 function updatePageState(index, updateHistory = false) {
-  const pageIndex = Math.max(0, Math.min(1, index));
+  const maxPage = roleDetails[activeRole] && session && canViewClass ? 2 : 1;
+  const pageIndex = Math.max(0, Math.min(maxPage, index));
+  if (pageIndex !== index) {
+    elements.pageTrack.scrollTo({ left: pageIndex * elements.pageTrack.clientWidth });
+  }
   const changed = pageIndex !== currentPage;
   currentPage = pageIndex;
-  elements.pageTabs.forEach((tab, tabIndex) => {
-    const active = tabIndex === currentPage;
+  elements.pageTabs.forEach((tab) => {
+    const active = Number(tab.dataset.pageIndex) === currentPage;
     tab.classList.toggle("active", active);
     if (active) tab.setAttribute("aria-current", "page");
     else tab.removeAttribute("aria-current");
   });
-  elements.pageTitle.textContent = currentPage === 0 ? "班级总览" : "每位同学的记录";
+  elements.pageTitle.textContent = ["班级总览", "每位同学的记录", "管理操作"][currentPage];
   elements.pageArrows.forEach((button) => {
     button.disabled = Number(button.dataset.pageStep) < 0
       ? currentPage === 0
-      : currentPage === 1;
+      : currentPage === maxPage;
   });
-  const activePage = elements.pageTrack.children[currentPage];
+  const activePage = elements.pageTrack.querySelector(`[data-page-index="${currentPage}"]`);
   if (activePage) elements.pageTrack.style.height = `${activePage.scrollHeight}px`;
   if (changed && updateHistory) {
-    window.history.pushState(null, "", `${window.location.pathname}${window.location.search}${currentPage === 1 ? "#records-page" : "#overview"}`);
+    const hash = ["#overview", "#records-page", "#management"][currentPage];
+    window.history.pushState(null, "", `${window.location.pathname}${window.location.search}${hash}`);
   }
 }
 
 function navigateToPage(index, updateHistory = true) {
-  const pageIndex = Math.max(0, Math.min(1, index));
+  const maxPage = roleDetails[activeRole] && session && canViewClass ? 2 : 1;
+  const pageIndex = Math.max(0, Math.min(maxPage, index));
   elements.pageTrack.scrollTo({
     left: pageIndex * elements.pageTrack.clientWidth,
     behavior: "smooth"
@@ -475,6 +548,18 @@ async function updateStudent(id, action) {
     showToast("没有找到这位同学，请刷新后重试。", true);
     return;
   }
+  if (action === "edit") {
+    if (!roleDetails[activeRole]?.canEditStudents) {
+      showToast("请使用三级管理员账号修改同学姓名。", true);
+      return;
+    }
+    elements.editStudentId.value = student.id;
+    elements.editStudentName.value = student.name;
+    elements.editStudentError.classList.add("hidden");
+    elements.editStudentDialog.showModal();
+    elements.editStudentName.focus();
+    return;
+  }
   const functionNames = {
     record: "record_homework",
     undo: "undo_homework_record",
@@ -500,9 +585,11 @@ async function updateStudent(id, action) {
 }
 
 elements.addButton.addEventListener("click", openAddDialog);
-elements.emptyAddButton.addEventListener("click", openAddDialog);
 document.querySelectorAll("[data-close-dialog]").forEach((button) => {
   button.addEventListener("click", () => elements.addDialog.close());
+});
+document.querySelectorAll("[data-close-edit-dialog]").forEach((button) => {
+  button.addEventListener("click", () => elements.editStudentDialog.close());
 });
 document.querySelectorAll("[data-close-display-name]").forEach((button) => {
   button.addEventListener("click", () => elements.displayNameDialog.close());
@@ -580,10 +667,140 @@ elements.addForm.addEventListener("submit", async (event) => {
   }
 });
 
-elements.studentTable.addEventListener("click", (event) => {
+elements.editStudentForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!roleDetails[activeRole]?.canEditStudents) {
+    showToast("请使用三级管理员账号修改同学姓名。", true);
+    return;
+  }
+  const studentId = elements.editStudentId.value;
+  const name = elements.editStudentName.value.trim();
+  if (!name || name.length > 20) {
+    elements.editStudentError.textContent = "姓名需为 1 至 20 个字符。";
+    elements.editStudentError.classList.remove("hidden");
+    return;
+  }
+  elements.editStudentSubmit.disabled = true;
+  try {
+    await apiRequest("/rest/v1/rpc/rename_student", {
+      method: "POST",
+      body: JSON.stringify({ p_student_id: studentId, p_name: name })
+    });
+    elements.editStudentDialog.close();
+    if (await loadCloudData({ force: true })) showToast("同学姓名已修改。");
+    else showToast("姓名修改已提交，但名单刷新失败，请检查网络。", true);
+  } catch (error) {
+    console.error("修改同学姓名失败：", error);
+    elements.editStudentError.textContent = error.message.includes("students_active_name_unique")
+      ? "这个名字已被使用，请换一个名字。"
+      : error.message || "修改失败，请检查管理员权限和网络。";
+    elements.editStudentError.classList.remove("hidden");
+  } finally {
+    elements.editStudentSubmit.disabled = false;
+  }
+});
+
+elements.batchAddForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!roleDetails[activeRole]?.canAddStudents) {
+    showToast("请使用二级或三级管理员账号批量添加同学。", true);
+    return;
+  }
+  const names = elements.batchStudentNames.value.split(/\r?\n/).map((name) => name.trim()).filter(Boolean);
+  if (names.length === 0 || names.length > 100) {
+    showToast("请输入 1 至 100 个同学姓名，每行一人。", true);
+    return;
+  }
+  if (!window.confirm(`确定批量添加 ${names.length} 位同学吗？`)) return;
+  const submitButton = elements.batchAddForm.querySelector('[type="submit"]');
+  submitButton.disabled = true;
+  try {
+    await apiRequest("/rest/v1/rpc/batch_add_students", {
+      method: "POST",
+      body: JSON.stringify({ p_names: names })
+    });
+    elements.batchStudentNames.value = "";
+    if (await loadCloudData({ force: true })) showToast(`已添加 ${names.length} 位同学。`);
+    else showToast("批量添加已提交，但名单刷新失败，请检查网络。", true);
+  } catch (error) {
+    console.error("批量添加同学失败：", error);
+    showToast(error.message || "批量添加失败；本批次未完成，请检查姓名是否重复。", true);
+  } finally {
+    submitButton.disabled = false;
+  }
+});
+
+async function runBatchAction(action) {
+  const studentIds = [...selectedStudentIds];
+  if (studentIds.length === 0) {
+    showToast("请先选择至少一位同学。", true);
+    return;
+  }
+  const role = roleDetails[activeRole];
+  const permissions = {
+    record: role?.canRecord,
+    undo: role?.canRecord,
+    remove: role?.canRemoveStudents
+  };
+  if (!permissions[action]) {
+    showToast(action === "remove"
+      ? "请使用三级管理员账号批量移除同学。"
+      : "请使用管理员账号执行批量记录或撤销。", true);
+    return;
+  }
+  const actionLabels = {
+    record: `给所选 ${studentIds.length} 位同学各记录 1 次`,
+    undo: `撤销所选 ${studentIds.length} 位同学各最近 1 次记录`,
+    remove: `移除所选 ${studentIds.length} 位同学`
+  };
+  if (!window.confirm(`确定${actionLabels[action]}吗？${action === "remove" ? "移除后同学不再显示，历史记录会保留。" : "若任一同学不符合条件，整批操作将不会执行。"}`)) return;
+
+  const functionNames = {
+    record: "batch_record_homework",
+    undo: "batch_undo_homework_record",
+    remove: "batch_archive_students"
+  };
+  try {
+    await apiRequest(`/rest/v1/rpc/${functionNames[action]}`, {
+      method: "POST",
+      body: JSON.stringify({ p_student_ids: studentIds })
+    });
+    selectedStudentIds.clear();
+    if (await loadCloudData({ force: true })) showToast("批量操作已完成。");
+    else showToast("批量操作已提交，但名单刷新失败，请检查网络。", true);
+  } catch (error) {
+    console.error(`批量操作 ${action} 失败：`, error);
+    showToast(error.message || "批量操作失败；本批次未执行，请检查所选同学状态。", true);
+    await loadCloudData({ quiet: true });
+  }
+}
+
+elements.managementStudentTable.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-action]");
   if (!button || button.disabled) return;
   updateStudent(button.dataset.id, button.dataset.action);
+});
+elements.managementStudentTable.addEventListener("change", (event) => {
+  const checkbox = event.target.closest("input[data-select-student]");
+  if (checkbox) {
+    if (checkbox.checked) selectedStudentIds.add(checkbox.dataset.selectStudent);
+    else selectedStudentIds.delete(checkbox.dataset.selectStudent);
+    render();
+  }
+});
+elements.selectAllStudents.addEventListener("change", () => {
+  const query = elements.managementSearchInput.value.trim().toLocaleLowerCase();
+  const visibleStudents = getSortedStudents().filter((student) =>
+    student.name.toLocaleLowerCase().includes(query)
+  );
+  visibleStudents.forEach((student) => {
+    if (elements.selectAllStudents.checked) selectedStudentIds.add(student.id);
+    else selectedStudentIds.delete(student.id);
+  });
+  render();
+});
+document.querySelectorAll("[data-batch-action]").forEach((button) => {
+  button.addEventListener("click", () => runBatchAction(button.dataset.batchAction));
 });
 
 elements.authButton.addEventListener("click", async () => {
@@ -668,6 +885,7 @@ elements.loginForm.addEventListener("submit", async (event) => {
 });
 
 elements.searchInput.addEventListener("input", render);
+elements.managementSearchInput.addEventListener("input", render);
 elements.pageTabs.forEach((tab) => {
   tab.addEventListener("click", () => navigateToPage(Number(tab.dataset.pageIndex)));
 });
@@ -687,10 +905,15 @@ window.addEventListener("resize", () => {
   updatePageState(currentPage);
 });
 window.addEventListener("popstate", () => {
-  navigateToPage(window.location.hash === "#records-page" ? 1 : 0, false);
+  const pageIndex = window.location.hash === "#management" ? 2 :
+    window.location.hash === "#records-page" ? 1 : 0;
+  navigateToPage(pageIndex, false);
 });
 elements.addDialog.addEventListener("click", (event) => {
   if (event.target === elements.addDialog) elements.addDialog.close();
+});
+elements.editStudentDialog.addEventListener("click", (event) => {
+  if (event.target === elements.editStudentDialog) elements.editStudentDialog.close();
 });
 elements.loginDialog.addEventListener("click", (event) => {
   if (event.target === elements.loginDialog) event.preventDefault();

@@ -30,6 +30,7 @@
       <nav class="page-switcher" aria-label="页面切换">
         <button class="page-tab active" type="button" data-page-index="0" aria-current="page">班级总览</button>
         <button class="page-tab" type="button" data-page-index="1">每位同学的记录</button>
+        <button class="page-tab admin-only hidden" type="button" data-page-index="2">管理操作</button>
         <span class="swipe-hint">也可左右滑动切换</span>
         <div class="page-arrows">
           <button class="page-arrow" type="button" data-page-step="-1" aria-label="上一页">←</button>
@@ -38,16 +39,13 @@
       </nav>
 
       <div class="page-track" id="pageTrack">
-        <section class="app-page" id="overviewPage" aria-label="班级总览">
+        <section class="app-page" id="overviewPage" data-page-index="0" aria-label="班级总览">
           <div class="page-heading">
             <div>
               <p class="eyebrow">CLASS OVERVIEW</p>
               <h1>英语作业记录</h1>
               <p class="subtitle">记录每一次完成情况，让进步和提醒都有迹可循。</p>
             </div>
-            <button class="button button-primary" id="addStudentButton" type="button">
-              <span aria-hidden="true">＋</span> 添加同学
-            </button>
           </div>
 
           <section class="stats-grid" aria-label="班级概况">
@@ -94,24 +92,73 @@
           </section>
         </section>
 
-        <section class="app-page" id="recordsPage" aria-label="每位同学的记录">
+        <section class="app-page" id="recordsPage" data-page-index="1" aria-label="每位同学的记录">
           <section class="panel students-panel" id="students">
             <div class="panel-heading student-heading">
-              <div><p class="eyebrow">STUDENT RECORDS</p><h2>每位同学的记录</h2><p class="panel-subtitle">查看次数，或撤销最近一次误记</p></div>
+              <div><p class="eyebrow">STUDENT RECORDS</p><h2>每位同学的记录</h2><p class="panel-subtitle">查看记录次数、等级和完成进度</p></div>
               <label class="search-box"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="搜索同学姓名" aria-label="搜索同学姓名"></label>
             </div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>排名</th><th>同学</th><th>记录次数</th><th>当前等级</th><th>进度</th><th class="action-header">操作</th></tr></thead>
+                <thead><tr><th>排名</th><th>同学</th><th>记录次数</th><th>当前等级</th><th>进度</th></tr></thead>
                 <tbody id="studentTable"></tbody>
               </table>
               <div class="empty-state hidden" id="emptyState">
                 <span class="empty-illustration">✎</span>
                 <strong id="emptyTitle">还没有添加同学</strong>
                 <p id="emptyDescription">添加班级同学后，就可以开始记录英语作业情况啦。</p>
-                <button class="button button-primary button-small" id="emptyAddButton" type="button">＋ 添加第一位同学</button>
               </div>
               <div class="no-results hidden" id="noResults">没有找到这位同学，试试其他名字。</div>
+            </div>
+          </section>
+        </section>
+
+        <section class="app-page admin-only hidden" id="managementPage" data-page-index="2" aria-label="管理操作" hidden>
+          <div class="page-heading management-heading">
+            <div>
+              <p class="eyebrow">ADMINISTRATION</p>
+              <h1>管理操作</h1>
+              <p class="subtitle">添加、修改同学资料，并记录或撤销作业情况。</p>
+            </div>
+            <button class="button button-primary" id="addStudentButton" type="button">
+              <span aria-hidden="true">＋</span> 添加同学
+            </button>
+          </div>
+
+          <section class="panel batch-panel">
+            <div class="panel-heading">
+              <div><p class="eyebrow">BATCH ACTIONS</p><h2>批量操作</h2><p class="panel-subtitle">先在下方勾选同学，再选择操作；批量添加请逐行输入姓名。</p></div>
+              <span class="selection-count" id="selectionCount">已选 0 人</span>
+            </div>
+            <div class="batch-actions">
+              <button class="button button-secondary" type="button" data-batch-action="record">批量记录 +1</button>
+              <button class="button button-secondary" type="button" data-batch-action="undo">批量撤销 1 次</button>
+              <button class="button button-danger admin-level3-only hidden" type="button" data-batch-action="remove">批量移除</button>
+            </div>
+            <form id="batchAddForm" class="batch-add-form admin-level2-only hidden">
+              <label class="field-label" for="batchStudentNames">批量添加同学</label>
+              <div class="batch-add-row">
+                <textarea class="text-input batch-names-input" id="batchStudentNames" rows="3" maxlength="3000" placeholder="每行输入一位同学的姓名，最多 100 位"></textarea>
+                <button class="button button-primary" type="submit">批量添加</button>
+              </div>
+              <p class="batch-hint">每个姓名最多 20 个字符；如遇重名，整批不会添加。</p>
+            </form>
+          </section>
+
+          <section class="panel students-panel management-students-panel">
+            <div class="panel-heading student-heading">
+              <div><p class="eyebrow">STUDENT MANAGEMENT</p><h2>同学名单与操作</h2><p class="panel-subtitle">选择同学进行批量操作，也可单独记录、撤销或修改姓名。</p></div>
+              <label class="search-box"><span aria-hidden="true">⌕</span><input id="managementSearchInput" type="search" placeholder="搜索同学姓名" aria-label="搜索管理名单"></label>
+            </div>
+            <div class="table-wrap">
+              <table class="management-table">
+                <thead><tr><th><input id="selectAllStudents" type="checkbox" aria-label="选择全部筛选结果"></th><th>同学</th><th>记录次数</th><th>当前等级</th><th>进度</th><th class="action-header">操作</th></tr></thead>
+                <tbody id="managementStudentTable"></tbody>
+              </table>
+              <div class="empty-state hidden" id="managementEmptyState">
+                <strong>暂无可管理的同学</strong>
+                <p>添加同学后即可使用管理操作。</p>
+              </div>
             </div>
           </section>
         </section>
@@ -131,6 +178,20 @@
       <input class="text-input" id="studentName" name="studentName" maxlength="20" autocomplete="off" placeholder="请输入姓名" required>
       <p class="form-error hidden" id="formError" role="alert"></p>
       <div class="modal-actions"><button class="button button-secondary" type="button" data-close-dialog>取消</button><button class="button button-primary" type="submit">确认添加</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="editStudentDialog" class="modal">
+    <form id="editStudentForm">
+      <div class="modal-top"><div class="modal-symbol">✎</div><button class="close-button" type="button" data-close-edit-dialog aria-label="关闭">×</button></div>
+      <p class="eyebrow">EDIT STUDENT</p>
+      <h2>修改同学姓名</h2>
+      <p class="modal-description">修改后会同步更新排行榜和记录列表。</p>
+      <input id="editStudentId" type="hidden">
+      <label class="field-label" for="editStudentName">同学姓名</label>
+      <input class="text-input" id="editStudentName" maxlength="20" autocomplete="off" placeholder="请输入姓名" required>
+      <p class="form-error hidden" id="editStudentError" role="alert"></p>
+      <div class="modal-actions"><button class="button button-secondary" type="button" data-close-edit-dialog>取消</button><button class="button button-primary" id="editStudentSubmit" type="submit">保存修改</button></div>
     </form>
   </dialog>
 
