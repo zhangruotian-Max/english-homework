@@ -897,65 +897,22 @@ elements.pageArrows.forEach((button) => {
     navigateToPage(currentPage + Number(button.dataset.pageStep));
   });
 });
-let swipeStart = null;
-function getPageSwipeThreshold() {
-  return Math.max(140, elements.pageTrack.clientWidth * 0.24);
-}
-function beginSwipe(target, pointerId, x, y) {
-  swipeStart = null;
-  if (target.closest("button, input, textarea, select, label, a")) return;
-  swipeStart = { pointerId, x, y };
-}
-function finishSwipe(pointerId, x, y) {
-  if (!swipeStart || pointerId !== swipeStart.pointerId) return;
-  const deltaX = x - swipeStart.x;
-  const deltaY = y - swipeStart.y;
-  const swipeThreshold = getPageSwipeThreshold();
-  if (Math.abs(deltaX) >= swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
-    navigateToPage(currentPage + (deltaX < 0 ? 1 : -1));
-  }
-  swipeStart = null;
-}
-elements.pageTrack.addEventListener("touchstart", (event) => {
-  if (event.touches.length !== 1) {
-    swipeStart = null;
-    return;
-  }
-  const touch = event.changedTouches[0];
-  beginSwipe(event.target, touch.identifier, touch.clientX, touch.clientY);
-}, { passive: true });
-window.addEventListener("touchend", (event) => {
-  if (!swipeStart) return;
-  const touch = [...event.changedTouches].find(({ identifier }) => identifier === swipeStart.pointerId);
-  if (touch) finishSwipe(touch.identifier, touch.clientX, touch.clientY);
-}, { passive: true });
-window.addEventListener("touchcancel", () => {
-  swipeStart = null;
-}, { passive: true });
-let pageScrollTimer = 0;
-function settlePageScroll() {
+function updatePageFromScroll() {
   const trackWidth = elements.pageTrack.clientWidth;
   if (!trackWidth) return;
-  const currentOffset = currentPage * trackWidth;
-  const scrollDelta = elements.pageTrack.scrollLeft - currentOffset;
-  const swipeThreshold = getPageSwipeThreshold();
-  if (Math.abs(scrollDelta) >= swipeThreshold) {
-    navigateToPage(currentPage + (scrollDelta > 0 ? 1 : -1));
-  } else if (Math.abs(scrollDelta) > 1) {
-    elements.pageTrack.scrollTo({ left: currentOffset, behavior: "smooth" });
-  }
+  const maxPage = roleDetails[activeRole] && session && canViewClass ? 2 : 1;
+  const pageIndex = Math.max(0, Math.min(maxPage, Math.round(elements.pageTrack.scrollLeft / trackWidth)));
+  if (pageIndex !== currentPage) updatePageState(pageIndex, true);
 }
-elements.pageTrack.addEventListener("scroll", () => {
-  window.clearTimeout(pageScrollTimer);
-  pageScrollTimer = window.setTimeout(settlePageScroll, 240);
-}, { passive: true });
-elements.pageTrack.addEventListener("scrollend", () => {
-  window.clearTimeout(pageScrollTimer);
-  settlePageScroll();
-}, { passive: true });
-window.addEventListener("blur", () => {
-  swipeStart = null;
-});
+if ("onscrollend" in elements.pageTrack) {
+  elements.pageTrack.addEventListener("scrollend", updatePageFromScroll, { passive: true });
+} else {
+  let pageScrollTimer = 0;
+  elements.pageTrack.addEventListener("scroll", () => {
+    window.clearTimeout(pageScrollTimer);
+    pageScrollTimer = window.setTimeout(updatePageFromScroll, 200);
+  }, { passive: true });
+}
 window.addEventListener("resize", () => {
   const activePage = elements.pageTrack.querySelector(`.app-page[data-page-index="${currentPage}"]`);
   if (activePage) elements.pageTrack.scrollLeft = activePage.offsetLeft;
