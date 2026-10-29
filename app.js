@@ -399,7 +399,12 @@ function updatePageState(index, updateHistory = false) {
       ? currentPage === 0
       : currentPage === maxPage;
   });
+  const pages = elements.pageTrack.querySelectorAll(".app-page");
   const activePage = elements.pageTrack.querySelector(`.app-page[data-page-index="${currentPage}"]`);
+  pages.forEach((page) => {
+    const offset = Number(page.dataset.pageIndex) - currentPage;
+    page.style.transform = `translateX(${offset * 100}%)`;
+  });
   if (activePage) {
     elements.pageTrack.style.height = `${activePage.offsetHeight}px`;
   }
@@ -412,10 +417,6 @@ function updatePageState(index, updateHistory = false) {
 function navigateToPage(index, updateHistory = true) {
   const maxPage = roleDetails[activeRole] && session && canViewClass ? 2 : 1;
   const pageIndex = Math.max(0, Math.min(maxPage, index));
-  const activePage = elements.pageTrack.querySelector(`.app-page[data-page-index="${pageIndex}"]`);
-  if (activePage) {
-    elements.pageTrack.scrollTo({ left: activePage.offsetLeft, behavior: "smooth" });
-  }
   updatePageState(pageIndex, updateHistory);
 }
 
@@ -426,11 +427,7 @@ function render() {
   renderChart();
   renderTable(sortedStudents);
   renderAccount();
-  window.requestAnimationFrame(() => {
-    updatePageState(currentPage);
-    const activePage = elements.pageTrack.querySelector(`.app-page[data-page-index="${currentPage}"]`);
-    if (activePage) elements.pageTrack.scrollLeft = activePage.offsetLeft;
-  });
+  window.requestAnimationFrame(() => updatePageState(currentPage));
 }
 
 async function loadCloudData({ quiet = false, force = false } = {}) {
@@ -897,25 +894,7 @@ elements.pageArrows.forEach((button) => {
     navigateToPage(currentPage + Number(button.dataset.pageStep));
   });
 });
-function updatePageFromScroll() {
-  const trackWidth = elements.pageTrack.clientWidth;
-  if (!trackWidth) return;
-  const maxPage = roleDetails[activeRole] && session && canViewClass ? 2 : 1;
-  const pageIndex = Math.max(0, Math.min(maxPage, Math.round(elements.pageTrack.scrollLeft / trackWidth)));
-  if (pageIndex !== currentPage) updatePageState(pageIndex, true);
-}
-if ("onscrollend" in elements.pageTrack) {
-  elements.pageTrack.addEventListener("scrollend", updatePageFromScroll, { passive: true });
-} else {
-  let pageScrollTimer = 0;
-  elements.pageTrack.addEventListener("scroll", () => {
-    window.clearTimeout(pageScrollTimer);
-    pageScrollTimer = window.setTimeout(updatePageFromScroll, 200);
-  }, { passive: true });
-}
 window.addEventListener("resize", () => {
-  const activePage = elements.pageTrack.querySelector(`.app-page[data-page-index="${currentPage}"]`);
-  if (activePage) elements.pageTrack.scrollLeft = activePage.offsetLeft;
   updatePageState(currentPage);
 });
 window.addEventListener("popstate", () => {
