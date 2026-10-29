@@ -40,7 +40,7 @@ html.auth-checking .app-shell { display: none; }
 .page-tab:hover, .page-tab.active { color: var(--blue-dark); }
 .page-tab.active { font-weight: 600; }
 .page-tab.active::after { position: absolute; right: 12px; bottom: -1px; left: 12px; height: 2px; border-radius: 2px; background: var(--blue); content: ""; }
-.swipe-hint { margin-left: auto; color: #a9b0bc; font-size: 10px; }
+.page-switcher .page-arrows { margin-left: auto; }
 .page-arrows { display: flex; gap: 5px; margin-left: 10px; }
 .page-arrow { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid #e8ecf3; border-radius: 7px; background: #fff; color: #748198; font-size: 15px; }
 .page-arrow:hover:not(:disabled) { border-color: #d8e0fb; background: #f7f8ff; color: var(--blue-dark); }
@@ -129,6 +129,7 @@ h2 { margin-bottom: 5px; font-size: 16px; font-weight: 700; letter-spacing: -.2p
 .button-danger:hover { background: #fff1ef; }
 .batch-add-form { margin-top: 18px; padding-top: 16px; border-top: 1px solid #f0f2f6; }
 .batch-add-row { display: flex; align-items: flex-end; gap: 10px; }
+.batch-add-row .button { flex: 0 0 auto; white-space: nowrap; }
 .batch-names-input { height: auto; min-height: 76px; padding: 9px 11px; resize: vertical; }
 .batch-hint { margin: 7px 0 0; }
 .management-table th:first-child, .management-table td:first-child { width: 38px; padding-left: 6px; text-align: center; }
@@ -152,6 +153,7 @@ th:nth-child(3) { width: 17%; }
 th:nth-child(4) { width: 17%; }
 th:nth-child(5) { width: 23%; }
 th:last-child, td:last-child { width: 145px; text-align: right; }
+#recordsPage th:last-child, #recordsPage td:last-child { width: 23%; text-align: left; }
 .table-rank { display: inline-grid; width: 21px; height: 21px; place-items: center; border-radius: 6px; background: #f5f6f8; color: #8590a1; font-size: 9px; }
 .table-rank.top-rank { background: #fff2dc; color: #cc923c; }
 .name-cell { display: flex; align-items: center; gap: 8px; color: #475469; font-weight: 600; }
@@ -215,7 +217,6 @@ tr:nth-of-type(3n + 2) .avatar { background: #fff5eb; color: #c48a53; }
   .topbar { height: 53px; }
   .page-switcher { min-height: 46px; }
   .page-tab { height: 46px; padding: 0 10px; font-size: 10px; }
-  .swipe-hint { display: none; }
   .page-arrows { margin-left: auto; }
   .page-arrow { width: 27px; height: 27px; }
   .batch-panel, .management-students-panel { padding: 16px 13px 13px; }
