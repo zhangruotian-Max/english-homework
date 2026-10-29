@@ -45,7 +45,7 @@ html.auth-checking .app-shell { display: none; }
 .page-arrow { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid #e8ecf3; border-radius: 7px; background: #fff; color: #748198; font-size: 15px; }
 .page-arrow:hover:not(:disabled) { border-color: #d8e0fb; background: #f7f8ff; color: var(--blue-dark); }
 .page-arrow:disabled { cursor: default; opacity: .4; }
-.page-track { display: flex; align-items: flex-start; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-behavior: smooth; scroll-snap-type: x mandatory; scrollbar-width: none; touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch; }
+.page-track { display: flex; align-items: flex-start; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-behavior: smooth; scroll-snap-type: none; scrollbar-width: none; touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch; }
 .page-track::-webkit-scrollbar { display: none; }
 .app-page { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; }
 .app-page[hidden] { display: none; }

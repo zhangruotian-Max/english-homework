@@ -898,6 +898,9 @@ elements.pageArrows.forEach((button) => {
   });
 });
 let swipeStart = null;
+function getPageSwipeThreshold() {
+  return Math.max(140, elements.pageTrack.clientWidth * 0.24);
+}
 function beginSwipe(target, pointerId, x, y) {
   swipeStart = null;
   if (target.closest("button, input, textarea, select, label, a")) return;
@@ -907,7 +910,7 @@ function finishSwipe(pointerId, x, y) {
   if (!swipeStart || pointerId !== swipeStart.pointerId) return;
   const deltaX = x - swipeStart.x;
   const deltaY = y - swipeStart.y;
-  const swipeThreshold = Math.max(80, elements.pageTrack.clientWidth * 0.1);
+  const swipeThreshold = getPageSwipeThreshold();
   if (Math.abs(deltaX) >= swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
     navigateToPage(currentPage + (deltaX < 0 ? 1 : -1));
   }
@@ -929,15 +932,26 @@ window.addEventListener("touchend", (event) => {
 window.addEventListener("touchcancel", () => {
   swipeStart = null;
 }, { passive: true });
-let pageScrollFrame = 0;
+let pageScrollTimer = 0;
+function settlePageScroll() {
+  const trackWidth = elements.pageTrack.clientWidth;
+  if (!trackWidth) return;
+  const currentOffset = currentPage * trackWidth;
+  const scrollDelta = elements.pageTrack.scrollLeft - currentOffset;
+  const swipeThreshold = getPageSwipeThreshold();
+  if (Math.abs(scrollDelta) >= swipeThreshold) {
+    navigateToPage(currentPage + (scrollDelta > 0 ? 1 : -1));
+  } else if (Math.abs(scrollDelta) > 1) {
+    elements.pageTrack.scrollTo({ left: currentOffset, behavior: "smooth" });
+  }
+}
 elements.pageTrack.addEventListener("scroll", () => {
-  if (pageScrollFrame) return;
-  pageScrollFrame = window.requestAnimationFrame(() => {
-    pageScrollFrame = 0;
-    if (!elements.pageTrack.clientWidth) return;
-    const pageIndex = Math.round(elements.pageTrack.scrollLeft / elements.pageTrack.clientWidth);
-    if (pageIndex !== currentPage) updatePageState(pageIndex, true);
-  });
+  window.clearTimeout(pageScrollTimer);
+  pageScrollTimer = window.setTimeout(settlePageScroll, 240);
+}, { passive: true });
+elements.pageTrack.addEventListener("scrollend", () => {
+  window.clearTimeout(pageScrollTimer);
+  settlePageScroll();
 }, { passive: true });
 window.addEventListener("blur", () => {
   swipeStart = null;
