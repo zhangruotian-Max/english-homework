@@ -15,8 +15,21 @@ create table if not exists public.class_viewers (
 create table if not exists public.login_usernames (
   user_id uuid primary key references auth.users (id) on delete cascade,
   username text not null unique
-    check (username = lower(username) and username ~ '^[a-z0-9][a-z0-9._-]{2,29}$')
+    check (username ~ '^[A-Za-z0-9][A-Za-z0-9._-]{2,29}$'),
+  username_normalized text generated always as (lower(username)) stored
 );
+
+alter table public.login_usernames
+  drop constraint if exists login_usernames_username_check;
+alter table public.login_usernames
+  add constraint login_usernames_username_check
+  check (username ~ '^[A-Za-z0-9][A-Za-z0-9._-]{2,29}$');
+alter table public.login_usernames
+  add column if not exists username_normalized text
+  generated always as (lower(username)) stored;
+
+create unique index if not exists login_usernames_normalized_unique
+  on public.login_usernames (username_normalized);
 
 alter table public.admin_roles
   add column if not exists display_name text

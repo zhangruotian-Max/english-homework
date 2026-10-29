@@ -78,7 +78,7 @@ Deno.serve(async (request: Request) => {
   try {
     const usernameQuery = new URLSearchParams({
       select: "user_id",
-      username: `eq.${username}`,
+      username_normalized: `eq.${username}`,
       limit: "1"
     });
     const usernameResponse = await fetch(
