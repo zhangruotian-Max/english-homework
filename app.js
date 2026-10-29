@@ -399,11 +399,14 @@ function updatePageState(index, updateHistory = false) {
       ? currentPage === 0
       : currentPage === maxPage;
   });
-  const activePage = elements.pageTrack.querySelector(`[data-page-index="${currentPage}"]`);
+  const pages = elements.pageTrack.querySelectorAll(".app-page");
+  const activePage = elements.pageTrack.querySelector(`.app-page[data-page-index="${currentPage}"]`);
+  pages.forEach((page) => {
+    const offset = Number(page.dataset.pageIndex) - currentPage;
+    page.style.transform = `translateX(${offset * 100}%)`;
+  });
   if (activePage) {
     elements.pageTrack.style.height = `${activePage.offsetHeight}px`;
-    const pageOffset = activePage.getBoundingClientRect().left - elements.pageTrack.getBoundingClientRect().left;
-    elements.pageTrack.style.transform = `translateX(-${pageOffset}px)`;
   }
   if (changed && updateHistory) {
     const hash = ["#overview", "#records-page", "#management"][currentPage];
