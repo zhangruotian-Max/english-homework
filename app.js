@@ -23,6 +23,7 @@ const elements = {
   loginPassword: document.querySelector("#adminPassword"),
   loginError: document.querySelector("#loginError"),
   loginSubmit: document.querySelector("#loginSubmit"),
+  mainContent: document.querySelector(".main-content"),
   pageTrack: document.querySelector("#pageTrack"),
   pageTitle: document.querySelector("#pageTitle"),
   pageTabs: [...document.querySelectorAll(".page-tab")],
@@ -943,7 +944,7 @@ window.addEventListener("touchcancel", () => {
 let horizontalWheelDelta = 0;
 let wheelGestureNavigated = false;
 let wheelGestureTimer = 0;
-elements.pageTrack.addEventListener("wheel", (event) => {
+elements.mainContent.addEventListener("wheel", (event) => {
   const deltaX = event.deltaX || (event.shiftKey ? event.deltaY : 0);
   if (!deltaX) return;
   const scrollableTable = event.target.closest(".table-wrap");
