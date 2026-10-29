@@ -940,6 +940,35 @@ window.addEventListener("touchend", (event) => {
 window.addEventListener("touchcancel", () => {
   swipeStart = null;
 }, { passive: true });
+let horizontalWheelDelta = 0;
+let wheelGestureNavigated = false;
+let wheelGestureTimer = 0;
+elements.pageTrack.addEventListener("wheel", (event) => {
+  const deltaX = event.deltaX || (event.shiftKey ? event.deltaY : 0);
+  if (!deltaX) return;
+  const scrollableTable = event.target.closest(".table-wrap");
+  if (scrollableTable && scrollableTable.scrollWidth > scrollableTable.clientWidth) {
+    const canScroll = deltaX < 0
+      ? scrollableTable.scrollLeft > 0
+      : scrollableTable.scrollLeft + scrollableTable.clientWidth < scrollableTable.scrollWidth - 1;
+    if (canScroll) return;
+  }
+  event.preventDefault();
+  if (!wheelGestureNavigated) {
+    horizontalWheelDelta += deltaX;
+    const wheelThreshold = Math.max(48, elements.pageTrack.clientWidth * 0.08);
+    if (Math.abs(horizontalWheelDelta) >= wheelThreshold) {
+      navigateToPage(currentPage + (horizontalWheelDelta > 0 ? 1 : -1));
+      horizontalWheelDelta = 0;
+      wheelGestureNavigated = true;
+    }
+  }
+  window.clearTimeout(wheelGestureTimer);
+  wheelGestureTimer = window.setTimeout(() => {
+    horizontalWheelDelta = 0;
+    wheelGestureNavigated = false;
+  }, 180);
+}, { passive: false });
 window.addEventListener("blur", () => {
   swipeStart = null;
 });
