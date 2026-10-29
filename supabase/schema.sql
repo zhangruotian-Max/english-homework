@@ -359,7 +359,7 @@ begin
   if p_student_ids is null or coalesce(array_length(p_student_ids, 1), 0) not between 1 and 100
     or array_position(p_student_ids, null) is not null
     or cardinality(p_student_ids) <> (
-      select count(distinct student_id) from unnest(p_student_ids) as ids(student_id)
+      select count(distinct ids.student_id) from unnest(p_student_ids) as ids(student_id)
     )
   then
     raise exception 'select 1 to 100 unique students';
@@ -385,7 +385,7 @@ begin
   if p_student_ids is null or coalesce(array_length(p_student_ids, 1), 0) not between 1 and 100
     or array_position(p_student_ids, null) is not null
     or cardinality(p_student_ids) <> (
-      select count(distinct student_id) from unnest(p_student_ids) as ids(student_id)
+      select count(distinct ids.student_id) from unnest(p_student_ids) as ids(student_id)
     )
   then
     raise exception 'select 1 to 100 unique students';
@@ -414,7 +414,7 @@ begin
   if p_student_ids is null or coalesce(array_length(p_student_ids, 1), 0) not between 1 and 100
     or array_position(p_student_ids, null) is not null
     or cardinality(p_student_ids) <> (
-      select count(distinct student_id) from unnest(p_student_ids) as ids(student_id)
+      select count(distinct ids.student_id) from unnest(p_student_ids) as ids(student_id)
     )
   then
     raise exception 'select 1 to 100 unique students';
