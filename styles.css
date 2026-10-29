@@ -14,9 +14,9 @@
 body { margin: 0; background: var(--canvas); color: var(--ink); font-size: 14px; }
 button, input, select { font: inherit; }
 button { cursor: pointer; }
-.app-shell { min-height: 100vh; }
+.app-shell { min-height: 0; }
 html.auth-checking .app-shell { display: none; }
-.main-content { width: 100%; max-width: 1600px; min-height: 100vh; margin: 0 auto; padding: 0 38px 23px; }
+.main-content { width: 100%; max-width: 1600px; margin: 0 auto; padding: 0 38px 23px; }
 .topbar { display: flex; height: 68px; align-items: center; justify-content: space-between; border-bottom: 1px solid #e9edf3; }
 .breadcrumb { color: #9aa3b1; font-size: 12px; }
 .breadcrumb span { padding: 0 8px; color: #c5cad2; }

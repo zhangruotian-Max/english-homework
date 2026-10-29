@@ -403,7 +403,10 @@ function updatePageState(index, updateHistory = false) {
       : currentPage === maxPage;
   });
   const activePage = elements.pageTrack.querySelector(`[data-page-index="${currentPage}"]`);
-  if (activePage) elements.pageTrack.style.height = `${activePage.scrollHeight}px`;
+  if (activePage) {
+    elements.pageTrack.style.height = "auto";
+    elements.pageTrack.style.height = `${activePage.getBoundingClientRect().height}px`;
+  }
   if (changed && updateHistory) {
     const hash = ["#overview", "#records-page", "#management"][currentPage];
     window.history.pushState(null, "", `${window.location.pathname}${window.location.search}${hash}`);
