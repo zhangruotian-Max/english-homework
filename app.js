@@ -895,26 +895,51 @@ elements.pageArrows.forEach((button) => {
   });
 });
 let swipeStart = null;
-elements.pageTrack.addEventListener("pointerdown", (event) => {
-  if (!event.isPrimary) return;
-  if (event.pointerType === "mouse" && event.button !== 0) return;
-  if (event.target.closest("button, input, textarea, select, label, a")) return;
-  swipeStart = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
-});
-window.addEventListener("pointerup", (event) => {
-  if (!swipeStart || event.pointerId !== swipeStart.pointerId) return;
-  const deltaX = event.clientX - swipeStart.x;
-  const deltaY = event.clientY - swipeStart.y;
+function beginSwipe(target, pointerId, x, y) {
+  swipeStart = null;
+  if (target.closest("button, input, textarea, select, label, a")) return;
+  swipeStart = { pointerId, x, y };
+}
+function finishSwipe(pointerId, x, y) {
+  if (!swipeStart || pointerId !== swipeStart.pointerId) return;
+  const deltaX = x - swipeStart.x;
+  const deltaY = y - swipeStart.y;
   const swipeThreshold = Math.max(48, elements.pageTrack.clientWidth * 0.08);
   if (Math.abs(deltaX) >= swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
     navigateToPage(currentPage + (deltaX < 0 ? 1 : -1));
   }
   swipeStart = null;
+}
+elements.pageTrack.addEventListener("pointerdown", (event) => {
+  if (!event.isPrimary || event.pointerType === "touch") return;
+  if (event.button !== 0) return;
+  beginSwipe(event.target, event.pointerId, event.clientX, event.clientY);
+});
+window.addEventListener("pointerup", (event) => {
+  if (event.pointerType === "touch") return;
+  finishSwipe(event.pointerId, event.clientX, event.clientY);
 });
 window.addEventListener("pointercancel", (event) => {
+  if (event.pointerType === "touch") return;
   if (!swipeStart || event.pointerId !== swipeStart.pointerId) return;
   swipeStart = null;
 });
+elements.pageTrack.addEventListener("touchstart", (event) => {
+  if (event.touches.length !== 1) {
+    swipeStart = null;
+    return;
+  }
+  const touch = event.changedTouches[0];
+  beginSwipe(event.target, touch.identifier, touch.clientX, touch.clientY);
+}, { passive: true });
+window.addEventListener("touchend", (event) => {
+  if (!swipeStart) return;
+  const touch = [...event.changedTouches].find(({ identifier }) => identifier === swipeStart.pointerId);
+  if (touch) finishSwipe(touch.identifier, touch.clientX, touch.clientY);
+}, { passive: true });
+window.addEventListener("touchcancel", () => {
+  swipeStart = null;
+}, { passive: true });
 window.addEventListener("blur", () => {
   swipeStart = null;
 });
