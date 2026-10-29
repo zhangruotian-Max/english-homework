@@ -23,7 +23,6 @@ const elements = {
   loginPassword: document.querySelector("#adminPassword"),
   loginError: document.querySelector("#loginError"),
   loginSubmit: document.querySelector("#loginSubmit"),
-  mainContent: document.querySelector(".main-content"),
   pageTrack: document.querySelector("#pageTrack"),
   pageTitle: document.querySelector("#pageTitle"),
   pageTabs: [...document.querySelectorAll(".page-tab")],
@@ -914,20 +913,6 @@ function finishSwipe(pointerId, x, y) {
   }
   swipeStart = null;
 }
-elements.pageTrack.addEventListener("pointerdown", (event) => {
-  if (!event.isPrimary || event.pointerType === "touch") return;
-  if (event.button !== 0) return;
-  beginSwipe(event.target, event.pointerId, event.clientX, event.clientY);
-});
-window.addEventListener("pointerup", (event) => {
-  if (event.pointerType === "touch") return;
-  finishSwipe(event.pointerId, event.clientX, event.clientY);
-});
-window.addEventListener("pointercancel", (event) => {
-  if (event.pointerType === "touch") return;
-  if (!swipeStart || event.pointerId !== swipeStart.pointerId) return;
-  swipeStart = null;
-});
 elements.pageTrack.addEventListener("touchstart", (event) => {
   if (event.touches.length !== 1) {
     swipeStart = null;
@@ -954,35 +939,6 @@ elements.pageTrack.addEventListener("scroll", () => {
     if (pageIndex !== currentPage) updatePageState(pageIndex, true);
   });
 }, { passive: true });
-let horizontalWheelDelta = 0;
-let wheelGestureNavigated = false;
-let wheelGestureTimer = 0;
-elements.mainContent.addEventListener("wheel", (event) => {
-  const deltaX = event.deltaX || (event.shiftKey ? event.deltaY : 0);
-  if (!deltaX) return;
-  const scrollableTable = event.target.closest(".table-wrap");
-  if (scrollableTable && scrollableTable.scrollWidth > scrollableTable.clientWidth) {
-    const canScroll = deltaX < 0
-      ? scrollableTable.scrollLeft > 0
-      : scrollableTable.scrollLeft + scrollableTable.clientWidth < scrollableTable.scrollWidth - 1;
-    if (canScroll) return;
-  }
-  event.preventDefault();
-  if (!wheelGestureNavigated) {
-    horizontalWheelDelta += deltaX;
-    const wheelThreshold = Math.max(80, elements.pageTrack.clientWidth * 0.1);
-    if (Math.abs(horizontalWheelDelta) >= wheelThreshold) {
-      navigateToPage(currentPage + (horizontalWheelDelta > 0 ? 1 : -1));
-      horizontalWheelDelta = 0;
-      wheelGestureNavigated = true;
-    }
-  }
-  window.clearTimeout(wheelGestureTimer);
-  wheelGestureTimer = window.setTimeout(() => {
-    horizontalWheelDelta = 0;
-    wheelGestureNavigated = false;
-  }, 450);
-}, { passive: false });
 window.addEventListener("blur", () => {
   swipeStart = null;
 });
