@@ -13,32 +13,9 @@
 </head>
 <body>
   <div class="app-shell">
-    <aside class="sidebar">
-      <a class="brand" href="#" aria-label="作业有迹首页">
-        <span class="brand-mark" aria-hidden="true">迹</span>
-        <span class="brand-copy"><strong>作业有迹</strong><small>ENGLISH · CLASSROOM</small></span>
-      </a>
-
-      <div class="nav-label">工作台</div>
-      <nav aria-label="主导航">
-        <a class="nav-item active" href="#overview"><span class="nav-icon">▦</span>总览</a>
-        <a class="nav-item" href="#ranking"><span class="nav-icon">♧</span>学生排行榜</a>
-        <a class="nav-item" href="#levels"><span class="nav-icon">▥</span>等级统计</a>
-      </nav>
-
-      <div class="sidebar-bottom">
-        <div class="tip-card">
-          <span class="tip-spark">✳</span>
-          <strong>公平记录，及时提醒</strong>
-          <p>每次记录都会保存，误记了也可以随时撤销。</p>
-        </div>
-        <div class="sidebar-foot">班级作业管理 · 云端同步</div>
-      </div>
-    </aside>
-
     <main class="main-content" id="overview">
       <header class="topbar">
-        <div class="breadcrumb">英语作业 <span>/</span> <strong>班级总览</strong></div>
+        <div class="breadcrumb">英语作业 <span>/</span> <strong id="pageTitle">班级总览</strong></div>
         <div class="top-actions">
           <span class="today" id="today"></span>
           <label class="role-control">
@@ -50,79 +27,95 @@
         </div>
       </header>
 
-      <section class="page-heading">
-        <div>
-          <p class="eyebrow">CLASS OVERVIEW</p>
-          <h1>英语作业记录</h1>
-          <p class="subtitle">记录每一次完成情况，让进步和提醒都有迹可循。</p>
+      <nav class="page-switcher" aria-label="页面切换">
+        <button class="page-tab active" type="button" data-page-index="0" aria-current="page">班级总览</button>
+        <button class="page-tab" type="button" data-page-index="1">每位同学的记录</button>
+        <span class="swipe-hint">也可左右滑动切换</span>
+        <div class="page-arrows">
+          <button class="page-arrow" type="button" data-page-step="-1" aria-label="上一页">←</button>
+          <button class="page-arrow" type="button" data-page-step="1" aria-label="下一页">→</button>
         </div>
-        <button class="button button-primary" id="addStudentButton" type="button">
-          <span aria-hidden="true">＋</span> 添加同学
-        </button>
-      </section>
+      </nav>
 
-      <section class="stats-grid" aria-label="班级概况">
-        <article class="stat-card">
-          <div class="stat-icon icon-blue">♙</div>
-          <div><span class="stat-label">班级同学</span><strong class="stat-value" id="studentTotal">0</strong><span class="stat-note">位同学</span></div>
-          <span class="stat-corner">01</span>
-        </article>
-        <article class="stat-card">
-          <div class="stat-icon icon-orange">↗</div>
-          <div><span class="stat-label">累计记录</span><strong class="stat-value" id="recordTotal">0</strong><span class="stat-note">次未留痕记录</span></div>
-          <span class="stat-corner">02</span>
-        </article>
-        <article class="stat-card">
-          <div class="stat-icon icon-purple">▤</div>
-          <div><span class="stat-label">需要关注</span><strong class="stat-value" id="attentionTotal">0</strong><span class="stat-note">位同学已有记录</span></div>
-          <span class="stat-corner">03</span>
-        </article>
-        <article class="stat-card stat-card-highlight">
-          <div class="stat-icon icon-green">✓</div>
-          <div><span class="stat-label">尚未记录</span><strong class="stat-value" id="clearTotal">0</strong><span class="stat-note">位同学保持良好</span></div>
-          <span class="stat-corner">04</span>
-        </article>
-      </section>
-
-      <section class="content-grid">
-        <article class="panel ranking-panel" id="ranking">
-          <div class="panel-heading">
-            <div><p class="eyebrow">CLASS RANKING</p><h2>同学排行榜</h2><p class="panel-subtitle">展示前三位同学，记录次数相同则并列</p></div>
-            <span class="heading-badge"><span class="live-dot"></span>云端同步</span>
+      <div class="page-track" id="pageTrack">
+        <section class="app-page" id="overviewPage" aria-label="班级总览">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">CLASS OVERVIEW</p>
+              <h1>英语作业记录</h1>
+              <p class="subtitle">记录每一次完成情况，让进步和提醒都有迹可循。</p>
+            </div>
+            <button class="button button-primary" id="addStudentButton" type="button">
+              <span aria-hidden="true">＋</span> 添加同学
+            </button>
           </div>
-          <div id="rankingList" class="ranking-list"></div>
-        </article>
 
-        <article class="panel levels-panel" id="levels">
-          <div class="panel-heading">
-            <div><p class="eyebrow">LEVEL DISTRIBUTION</p><h2>等级人数分布</h2><p class="panel-subtitle">统计各记录等级的同学人数</p></div>
-            <span class="chart-label">人数 <span class="chart-dot"></span></span>
-          </div>
-          <div id="levelChart" class="level-chart" role="img" aria-label="各等级人数条形统计图"></div>
-          <div class="chart-footnote"><span class="legend-square"></span>对应等级的同学人数 <span class="footnote-separator">·</span> 未记录同学不计入等级</div>
-          <div class="penalty-note"><span class="note-icon">✳</span><span><strong>等级对应措施</strong><small>具体内容后续配置</small></span><span class="note-arrow">→</span></div>
-        </article>
-      </section>
+          <section class="stats-grid" aria-label="班级概况">
+            <article class="stat-card">
+              <div class="stat-icon icon-blue">♙</div>
+              <div><span class="stat-label">班级同学</span><strong class="stat-value" id="studentTotal">0</strong><span class="stat-note">位同学</span></div>
+              <span class="stat-corner">01</span>
+            </article>
+            <article class="stat-card">
+              <div class="stat-icon icon-orange">↗</div>
+              <div><span class="stat-label">累计记录</span><strong class="stat-value" id="recordTotal">0</strong><span class="stat-note">次未留痕记录</span></div>
+              <span class="stat-corner">02</span>
+            </article>
+            <article class="stat-card">
+              <div class="stat-icon icon-purple">▤</div>
+              <div><span class="stat-label">需要关注</span><strong class="stat-value" id="attentionTotal">0</strong><span class="stat-note">位同学已有记录</span></div>
+              <span class="stat-corner">03</span>
+            </article>
+            <article class="stat-card stat-card-highlight">
+              <div class="stat-icon icon-green">✓</div>
+              <div><span class="stat-label">尚未记录</span><strong class="stat-value" id="clearTotal">0</strong><span class="stat-note">位同学保持良好</span></div>
+              <span class="stat-corner">04</span>
+            </article>
+          </section>
 
-      <section class="panel students-panel" id="students">
-        <div class="panel-heading student-heading">
-          <div><p class="eyebrow">STUDENT RECORDS</p><h2>每位同学的记录</h2><p class="panel-subtitle">查看次数，或撤销最近一次误记</p></div>
-          <label class="search-box"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="搜索同学姓名" aria-label="搜索同学姓名"></label>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>排名</th><th>同学</th><th>记录次数</th><th>当前等级</th><th>进度</th><th class="action-header">操作</th></tr></thead>
-            <tbody id="studentTable"></tbody>
-          </table>
-          <div class="empty-state hidden" id="emptyState">
-            <span class="empty-illustration">✎</span>
-            <strong id="emptyTitle">还没有添加同学</strong>
-            <p id="emptyDescription">添加班级同学后，就可以开始记录英语作业情况啦。</p>
-            <button class="button button-primary button-small" id="emptyAddButton" type="button">＋ 添加第一位同学</button>
-          </div>
-          <div class="no-results hidden" id="noResults">没有找到这位同学，试试其他名字。</div>
-        </div>
-      </section>
+          <section class="content-grid">
+            <article class="panel ranking-panel" id="ranking">
+              <div class="panel-heading">
+                <div><p class="eyebrow">CLASS RANKING</p><h2>同学排行榜</h2><p class="panel-subtitle">展示前三位同学，记录次数相同则并列</p></div>
+                <span class="heading-badge"><span class="live-dot"></span>云端同步</span>
+              </div>
+              <div id="rankingList" class="ranking-list"></div>
+            </article>
+
+            <article class="panel levels-panel" id="levels">
+              <div class="panel-heading">
+                <div><p class="eyebrow">LEVEL DISTRIBUTION</p><h2>等级人数分布</h2><p class="panel-subtitle">统计各记录等级的同学人数</p></div>
+                <span class="chart-label">人数 <span class="chart-dot"></span></span>
+              </div>
+              <div id="levelChart" class="level-chart" role="img" aria-label="各等级人数条形统计图"></div>
+              <div class="chart-footnote"><span class="legend-square"></span>对应等级的同学人数 <span class="footnote-separator">·</span> 未记录同学不计入等级</div>
+              <div class="penalty-note"><span class="note-icon">✳</span><span><strong>等级对应措施</strong><small>具体内容后续配置</small></span><span class="note-arrow">→</span></div>
+            </article>
+          </section>
+        </section>
+
+        <section class="app-page" id="recordsPage" aria-label="每位同学的记录">
+          <section class="panel students-panel" id="students">
+            <div class="panel-heading student-heading">
+              <div><p class="eyebrow">STUDENT RECORDS</p><h2>每位同学的记录</h2><p class="panel-subtitle">查看次数，或撤销最近一次误记</p></div>
+              <label class="search-box"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="搜索同学姓名" aria-label="搜索同学姓名"></label>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>排名</th><th>同学</th><th>记录次数</th><th>当前等级</th><th>进度</th><th class="action-header">操作</th></tr></thead>
+                <tbody id="studentTable"></tbody>
+              </table>
+              <div class="empty-state hidden" id="emptyState">
+                <span class="empty-illustration">✎</span>
+                <strong id="emptyTitle">还没有添加同学</strong>
+                <p id="emptyDescription">添加班级同学后，就可以开始记录英语作业情况啦。</p>
+                <button class="button button-primary button-small" id="emptyAddButton" type="button">＋ 添加第一位同学</button>
+              </div>
+              <div class="no-results hidden" id="noResults">没有找到这位同学，试试其他名字。</div>
+            </div>
+          </section>
+        </section>
+      </div>
 
       <footer class="page-footer"><span>作业有迹 <span class="footer-dot">·</span> 让每份努力都看得见</span><span id="connectionStatus">正在连接云端…</span></footer>
     </main>

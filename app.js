@@ -23,6 +23,10 @@ const elements = {
   loginPassword: document.querySelector("#adminPassword"),
   loginError: document.querySelector("#loginError"),
   loginSubmit: document.querySelector("#loginSubmit"),
+  pageTrack: document.querySelector("#pageTrack"),
+  pageTitle: document.querySelector("#pageTitle"),
+  pageTabs: [...document.querySelectorAll(".page-tab")],
+  pageArrows: [...document.querySelectorAll(".page-arrow")],
   logoutDialog: document.querySelector("#logoutDialog"),
   cancelLogout: document.querySelector("#cancelLogout"),
   confirmLogout: document.querySelector("#confirmLogout"),
@@ -56,6 +60,7 @@ let students = [];
 let activeRole = null;
 let signedInDisplayName = "";
 let canViewClass = false;
+let currentPage = window.location.hash === "#records-page" ? 1 : 0;
 let session = loadSession();
 let toastTimer;
 let refreshPromise = null;
@@ -95,6 +100,9 @@ function setAuthenticationRequired(required) {
     if (!elements.loginDialog.open) elements.loginDialog.showModal();
   } else if (elements.loginDialog.open) {
     elements.loginDialog.close();
+    window.requestAnimationFrame(() => navigateToPage(currentPage, false));
+  } else {
+    window.requestAnimationFrame(() => navigateToPage(currentPage, false));
   }
 }
 
@@ -307,6 +315,38 @@ function renderAccount() {
   elements.addButton.title = role?.canAddStudents ? "" : "请使用二级或三级管理员账号登录";
 }
 
+function updatePageState(index, updateHistory = false) {
+  const pageIndex = Math.max(0, Math.min(1, index));
+  const changed = pageIndex !== currentPage;
+  currentPage = pageIndex;
+  elements.pageTabs.forEach((tab, tabIndex) => {
+    const active = tabIndex === currentPage;
+    tab.classList.toggle("active", active);
+    if (active) tab.setAttribute("aria-current", "page");
+    else tab.removeAttribute("aria-current");
+  });
+  elements.pageTitle.textContent = currentPage === 0 ? "班级总览" : "每位同学的记录";
+  elements.pageArrows.forEach((button) => {
+    button.disabled = Number(button.dataset.pageStep) < 0
+      ? currentPage === 0
+      : currentPage === 1;
+  });
+  const activePage = elements.pageTrack.children[currentPage];
+  if (activePage) elements.pageTrack.style.height = `${activePage.scrollHeight}px`;
+  if (changed && updateHistory) {
+    window.history.pushState(null, "", `${window.location.pathname}${window.location.search}${currentPage === 1 ? "#records-page" : "#overview"}`);
+  }
+}
+
+function navigateToPage(index, updateHistory = true) {
+  const pageIndex = Math.max(0, Math.min(1, index));
+  elements.pageTrack.scrollTo({
+    left: pageIndex * elements.pageTrack.clientWidth,
+    behavior: "smooth"
+  });
+  updatePageState(pageIndex, updateHistory);
+}
+
 function render() {
   const sortedStudents = getSortedStudents();
   renderStats();
@@ -314,6 +354,7 @@ function render() {
   renderChart();
   renderTable(sortedStudents);
   renderAccount();
+  window.requestAnimationFrame(() => updatePageState(currentPage));
 }
 
 async function loadCloudData({ quiet = false, force = false } = {}) {
@@ -627,6 +668,27 @@ elements.loginForm.addEventListener("submit", async (event) => {
 });
 
 elements.searchInput.addEventListener("input", render);
+elements.pageTabs.forEach((tab) => {
+  tab.addEventListener("click", () => navigateToPage(Number(tab.dataset.pageIndex)));
+});
+elements.pageArrows.forEach((button) => {
+  button.addEventListener("click", () => {
+    navigateToPage(currentPage + Number(button.dataset.pageStep));
+  });
+});
+elements.pageTrack.addEventListener("scroll", () => {
+  window.requestAnimationFrame(() => {
+    const pageIndex = Math.round(elements.pageTrack.scrollLeft / elements.pageTrack.clientWidth);
+    if (pageIndex !== currentPage) updatePageState(pageIndex, true);
+  });
+});
+window.addEventListener("resize", () => {
+  elements.pageTrack.scrollLeft = currentPage * elements.pageTrack.clientWidth;
+  updatePageState(currentPage);
+});
+window.addEventListener("popstate", () => {
+  navigateToPage(window.location.hash === "#records-page" ? 1 : 0, false);
+});
 elements.addDialog.addEventListener("click", (event) => {
   if (event.target === elements.addDialog) elements.addDialog.close();
 });
