@@ -898,14 +898,14 @@ let swipeStart = null;
 elements.pageTrack.addEventListener("pointerdown", (event) => {
   if (!event.isPrimary) return;
   if (event.pointerType === "mouse" && event.button !== 0) return;
-  if (event.target.closest("button, input, textarea, select, label, a, .table-wrap")) return;
+  if (event.target.closest("button, input, textarea, select, label, a")) return;
   swipeStart = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
 });
 window.addEventListener("pointerup", (event) => {
   if (!swipeStart || event.pointerId !== swipeStart.pointerId) return;
   const deltaX = event.clientX - swipeStart.x;
   const deltaY = event.clientY - swipeStart.y;
-  const swipeThreshold = Math.max(56, elements.pageTrack.clientWidth * 0.12);
+  const swipeThreshold = Math.max(48, elements.pageTrack.clientWidth * 0.08);
   if (Math.abs(deltaX) >= swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
     navigateToPage(currentPage + (deltaX < 0 ? 1 : -1));
   }
